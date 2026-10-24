@@ -1,1 +1,2 @@
 T1-T4 done - backend skeleton, core auth/security, audit helpers, setup, /me, and change-password endpoints.
+T5 done - company settings and CRUD for departments, designations, leave types, and holidays; role checks, validation, audit logging, and default leave types.
