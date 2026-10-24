@@ -1,0 +1,10 @@
+A1 done - Supabase schema and project created
+A2 done - Render service configured with /health
+A3 done - Vercel frontend project configured
+A4 done - Groq smoke test script created
+A5-A8 done - AI chat, 7 tools, guards, rate limits, summarize, smart leave, Roman Urdu
+A6 done - HR login endpoints created
+A9 done - Dashboard API layer created (/dashboard/hr, /admin, /me)
+A10 done - AI services integrated
+A11 done - Payslip PDF rendering with ReportLab
+A12 done - README.md created with all specifications

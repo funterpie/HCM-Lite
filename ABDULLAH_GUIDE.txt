@@ -1,0 +1,154 @@
+=====================================================================
+ABDULLAH GUIDE - Infra/DevOps, dashboards (M7), AI assistant (M8), payslip PDF, README
+HCM Lite - Saylani Hackathon - works with ANY AI (Claude)
+=====================================================================
+
+HOW TO USE THIS FILE (read once)
+1. Open any AI. Attach or paste these 3 files: PROJECT.md, supabase/schema.sql, this guide.
+2. Paste the START PROMPT below.
+3. Do ONE task at a time: paste that task's PROMPT, get code, put it in the repo, run it, check the ACCEPT line.
+4. After each task: git commit, then add one line to progress/ABDULLAH.txt (example: "A8 done - chat works with 3 tools").
+5. If the AI quota runs out: open another account/AI, paste the RESUME PROMPT, attach progress/ABDULLAH.txt. Continue from the next task. No work is lost.
+
+QUOTA-SAVING RULES
+- Paste only the files the task needs, never the whole repo.
+- End every prompt with: "Output only the changed or new files, no explanations."
+- If something fails, paste only the error text and the one file involved.
+- Free fallbacks if everyone is out of quota: Gemini, ChatGPT free, DeepSeek, Claude free tier.
+- NEVER paste real keys (Supabase service key, Groq key) into any AI chat. Put them in Render/Vercel env settings only.
+
+---------------------------------------------------------------------
+START PROMPT (paste first in every new chat)
+---------------------------------------------------------------------
+You are Abdullah's coding assistant on the HCM Lite hackathon project (FastAPI + Supabase Postgres/Auth + React).
+Read PROJECT.md and schema.sql: they are binding (rules in section 7, API in section 9, metrics in section 11, AI rules in section 12).
+I own: Supabase/Render/Vercel setup, backend/app/modules/dashboards, modules/ai, modules/payroll/pdf.py, and the README.
+Taha owns core/* (current_user, require_role, scoped_employee_id, audit.log, notify) and the other routers.
+Saqib owns rules/* and attendance/leave services (get_attendance_summary, get_leave_summary, get_my_leave_balance) which my
+dashboards and AI tools CALL. The AI and dashboards must always return the same numbers, so reuse those service functions.
+The AI calls Groq with tool calling FROM THE BACKEND ONLY. The model never touches the database and never saves anything.
+One task at a time. Output only changed or new files, no explanations.
+
+---------------------------------------------------------------------
+RESUME PROMPT (use after switching AI or account)
+---------------------------------------------------------------------
+I am Abdullah on the HCM Lite project; my previous task ended. Attached: PROJECT.md, schema.sql, my
+progress/ABDULLAH.txt, and the files written so far.
+Read PROJECT.md first. My next task is <TASK ID> from my guide. Continue with the same conventions and output only
+changed or new files.
+
+---------------------------------------------------------------------
+TASKS (do in order; times are from the 4-hour start)
+---------------------------------------------------------------------
+
+A1  [T+0:00-0:15] Supabase (manual, no AI needed)
+1. Create the Supabase project. SQL editor -> run supabase/schema.sql.
+2. Authentication settings: turn OFF "confirm email" so admin-created users can log in at once.
+3. Collect: project URL, anon key, service-role key, DB connection string (transaction pooler, port 6543), and whether the
+   project uses JWKS (new signing keys) or the legacy JWT secret. Share them with the team in a PRIVATE chat only. Never git.
+ACCEPT: tables exist, team has the keys.
+
+A2  [T+0:15-0:30] Render (backend host)
+Create a Render web service from the repo: root directory backend/, build "pip install -r requirements.txt", start
+"uvicorn app.main:app --host 0.0.0.0 --port $PORT". Add env vars from PROJECT.md section 5. Add a ping to {render-url}/health
+every 5-10 minutes (cron-job.org or UptimeRobot) so it does not sleep. Post the URL in the team chat.
+ACCEPT: /health returns ok from the public URL.
+
+A3  [T+0:15-0:30] Vercel (frontend host)
+Create a Vercel project from frontend/ with VITE_API_URL (Render URL), VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY.
+Add the Vercel URL to CORS_ORIGINS on Render. Post the URL in the team chat.
+ACCEPT: the Vercel URL loads (even if it is a blank app).
+
+A4  [T+0:30-0:45] Groq smoke test
+Create the Groq API key (never paste it into a chat; set it in Render env as AI_API_KEY). Pick AI_MODEL from the models in
+Groq's docs that SUPPORT TOOL CALLING. Test with a tiny script.
+PROMPT:
+Write backend/scripts/groq_smoke_test.py: read AI_API_KEY and AI_MODEL from the environment, call Groq's
+OpenAI-compatible chat completions endpoint with httpx (base URL https://api.groq.com/openai/v1) with one dummy tool
+"get_headcount" and the question "How many employees do we have?", and print whether the model returned a tool call.
+Output only the file.
+ACCEPT: it prints a tool call. If not, try another tool-calling model.
+
+A5  [T+0:45-1:30] Dashboard services (HR)
+Create: modules/dashboards/{router,service,repo,schemas}.py
+Endpoint: GET /dashboard/hr?from&to&department_id
+ACCEPT: numbers match what you see on the attendance board and leave inbox for the same dates.
+PROMPT:
+Implement GET /dashboard/hr (Admin, HR) per PROJECT.md sections 9 and 11. Return {kpis:{headcount, present, on_leave, late_today,
+pending_approvals}, attendance_trend:[{date,rate}], absenteeism_by_dept:[{department,pct}], leave_by_type:[{type,days}],
+top_late:[{employee,count}]}. Headcount = active + probation on the end date. Use Saqib's service functions
+get_attendance_summary and get_leave_summary where they exist (stub them with the agreed signature otherwise) so numbers match
+the board; do SQL aggregation (GROUP BY) in repo.py, not Python loops over every row. Filters: date range and department.
+Expose the service functions get_headcount(session, user, ...), get_late_comers(session, user, from, to, department_id, limit=5),
+get_payroll_summary(session, user, month, department_id) for the AI tools to reuse. Output only the files.
+
+A6  [T+1:30-1:50] Dashboard: Admin + Employee
+Endpoints: GET /dashboard/admin, GET /dashboard/me
+PROMPT:
+Add GET /dashboard/admin (Admin only): {kpis:{headcount, attrition_ytd, payroll_cost, avg_salary}, headcount_by_dept,
+payroll_cost_by_dept, gender_split, tenure_buckets, audit_feed(last 10)}. Attrition = exits in period / average headcount x 100.
+Add GET /dashboard/me (any role, own data via scoped_employee_id): {hours_this_week, target_hours:40, late_count, leave_balance[],
+last_payslip, announcements(last 3)}. Same filters (from, to, department_id) where relevant. Output only the files.
+
+A7  [T+1:50-2:30] AI chat with tools
+Create: modules/ai/{router,service,tools,schemas}.py
+Endpoint: POST /ai/chat {message, history?} -> {answer, tool_used}
+ACCEPT: "How many active employees are in <department>?" matches the dashboard; Employee asking "What is <name>'s salary?" is politely refused.
+PROMPT:
+Implement POST /ai/chat per PROJECT.md section 12 using Groq (OpenAI-compatible tool calling, httpx, base URL
+https://api.groq.com/openai/v1, model from AI_MODEL, key from AI_API_KEY). Loop: send the user message with the tool definitions;
+if the model returns a tool call, run the tool in the BACKEND with the current user's scope, send the result back, return the final
+answer. Tools (tools.py): get_headcount, get_attendance_summary, get_late_comers, get_leave_summary, get_my_leave_balance,
+get_payroll_summary, search_employees. Each tool is a thin wrapper over existing service functions and enforces permissions:
+Employee role may only use get_my_leave_balance and their own attendance; asking for another person's data or salary returns a
+refusal string (the model must answer politely that it cannot share it). The system prompt includes today's date, the user's
+role, and the rule "answer only from tool results; if you do not know, say so". Timeout 15 s with a friendly fallback message.
+Return {answer, tool_used}. Output only the files.
+
+A8  [T+2:30-2:45] Guardrails + logging
+PROMPT:
+Add to modules/ai: log every call to ai_logs (user_id, kind, prompt, tool, response, latency_ms, ok); rate limit 20 AI requests per
+user per hour by counting ai_logs rows in the last hour (return 429 with a friendly message); catch all Groq errors and return a
+friendly fallback instead of a 500; never log or return the API key. Output only the changed files.
+
+A9  [T+2:45-3:00] Summarize + smart leave + policy Q&A
+Endpoints: POST /ai/summarize, POST /ai/smart-leave
+ACCEPT: summarize returns 3-5 bullets using only dashboard numbers; "need next Monday and Tuesday off for my sister's wedding" returns
+correct dates and the casual leave type; invalid JSON retries once then returns an error; nothing is saved.
+PROMPT:
+POST /ai/summarize {dashboard: 'hr'|'admin', from, to, department_id} (Admin, HR): call the matching dashboard service, send the KPI
+JSON to the model with the instruction "write 3-5 insight bullets using ONLY these numbers; do not invent anything", return {bullets}.
+POST /ai/smart-leave {text} (Employee, HR): put today's date + weekday and the real leave_types (id, name) from the DB in the prompt;
+ask for JSON only {leave_type_id, start_date, end_date, reason}; validate with Pydantic (dates ISO, end>=start, leave_type_id exists);
+retry once on invalid JSON, then return a 422 so the UI shows the normal form. NEVER create a leave request.
+Policy Q&A: in /ai/chat, if the message is a policy question, answer from the rules in PROJECT.md section 7 embedded in the system
+prompt, or say "I don't know". Add one line to the system prompt so it also understands Roman Urdu. Output only the changed files.
+
+A10 [T+3:00-3:15] Payslip PDF
+Create: modules/payroll/pdf.py
+Endpoint: GET /payslips/{id}/pdf (Taha mounts the router; you write the function)
+ACCEPT: Employee downloads own PDF; another employee's payslip returns 403; the PDF shows company name, month, gross, deductions, tax, net.
+PROMPT:
+Write modules/payroll/pdf.py with ReportLab: build_payslip_pdf(company_name, employee, payslip, month) -> bytes (A4, clean layout:
+company name, employee name/code/department, month, a table of basic, gross, absent/unpaid/half-day deductions, tax, net pay),
+and an async route GET /payslips/{id}/pdf returning application/pdf with Content-Disposition attachment. Enforce scope:
+Employee only their own payslip (scoped_employee_id), Admin/HR all. Output only the file.
+
+A11 [T+3:15-3:45, after feature freeze] README + rehearsal
+Write README.md: stack, local run (backend + frontend), how to create the first Admin (open the hosted link, setup screen, or
+ADMIN_EMAIL/ADMIN_PASSWORD), how to set AI_API_KEY, the payroll tax decision (tax on full gross, PROJECT.md section 7),
+what is done and what is not, hosted links. Then run the 5-minute demo script (PROJECT.md section 14) on a FRESH database
+and test the judges' live questions (PROJECT.md section 14, last paragraph).
+Make sure the repo has .env.example only (no real keys) and is public or shared with the judges.
+
+A12 [T+3:45-4:00] SUBMIT
+LMS: https://lms.saylaniit.com/ -> your portal -> add the Git repo link and the hosted project link. Test both links in an incognito window first.
+
+---------------------------------------------------------------------
+PROGRESS FILE (create progress/ABDULLAH.txt and append a line per finished task)
+---------------------------------------------------------------------
+A1 done - Supabase live, keys shared
+A2 done - Render URL posted
+A7 in progress - chat works, salary refusal not tested
+
+IF YOU ARE STUCK FOR MORE THAN 15 MINUTES: ask the team chat, do not burn quota looping.
