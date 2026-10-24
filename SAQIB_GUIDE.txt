@@ -1,0 +1,177 @@
+=====================================================================
+SAQIB GUIDE - Backend: rules engine, attendance, leave, payroll maths
+HCM Lite - Saylani Hackathon - works with ANY AI (Claude, ChatGPT, Gemini, DeepSeek, Cursor...)
+=====================================================================
+
+HOW TO USE THIS FILE (read once)
+1. Open any AI. Attach or paste these 3 files: PROJECT.md, supabase/schema.sql, this guide.
+2. Paste the START PROMPT below.
+3. Do ONE task at a time: paste that task's PROMPT, get code, put it in the repo, run it, check the ACCEPT line.
+4. After each task: git commit, then add one line to progress/SAQIB.txt (example: "S2 done - 9 tests pass").
+5. If the AI quota runs out: open another account/AI, paste the RESUME PROMPT, attach progress/SAQIB.txt. Continue from the next task. No work is lost.
+
+QUOTA-SAVING RULES
+- One task per chat. Start a NEW chat for each task.
+- Paste only the files the task needs, never the whole repo.
+- End every prompt with: "Output only the changed or new files, no explanations."
+- If a test fails, paste only the failing output and the one file involved.
+- Free fallbacks if everyone is out of quota: Gemini, ChatGPT free, DeepSeek, Claude free tier.
+
+---------------------------------------------------------------------
+START PROMPT (paste first in every new chat)
+---------------------------------------------------------------------
+You are Saqib's coding assistant on the HCM Lite hackathon project (FastAPI + Supabase Postgres + React).
+Read PROJECT.md and schema.sql: they are binding (business rules in section 7, signatures in section 10, API in section 9).
+I own: backend/app/rules/*, modules/attendance, modules/leave, backend/tests/*.
+Taha owns core/* (deps: current_user, require_role, scoped_employee_id; audit.log; notify) and employees.
+Abdullah owns dashboards and AI and will CALL my service functions, so expose clean async functions, not only routes.
+Rules in rules/ are PURE (no database). Use Decimal for money. All time-of-day logic uses settings.timezone (default Asia/Karachi).
+Absent and missing_checkout are COMPUTED, never stored. daily_status() is the single source of truth.
+One task at a time. Output only changed or new files, no explanations.
+
+---------------------------------------------------------------------
+RESUME PROMPT (use after switching AI or account)
+---------------------------------------------------------------------
+I am Saqib on the HCM Lite project; my previous AI session ended (quota). Attached: PROJECT.md, schema.sql, my
+progress/SAQIB.txt, and the files written so far (paste only the ones relevant to the next task).
+Read PROJECT.md first. My next task is <TASK ID> from my guide. Continue with the same conventions and output only
+changed or new files.
+
+---------------------------------------------------------------------
+TASKS (do in order; times are from the 4-hour start)
+---------------------------------------------------------------------
+IMPORTANT: S1-S4 must be pushed by T+0:30. Everyone depends on them.
+
+S1  [T+0:00-0:10] Calendar rules
+Create: backend/app/rules/calendar.py, tests/test_calendar.py
+ACCEPT: tests pass.
+PROMPT:
+Write rules/calendar.py: working_days(start: date, end: date, holidays: set[date], weekend: set[int]) -> list[date]
+(weekend uses ISO weekdays, Mon=1..Sun=7, default {6,7}; inclusive of both ends) and
+days_in_month_working(month: date, holidays, weekend) -> int. Pure functions. Write pytest tests: a normal week, a week
+with a holiday, a range that starts on Saturday, a single day that is a weekend (returns empty). Output only the files.
+
+S2  [T+0:10-0:20] Attendance status
+Create: rules/attendance.py, tests/test_attendance.py
+ACCEPT: tests pass, including the 09:15 boundary.
+PROMPT:
+Write rules/attendance.py. Settings is a dataclass with office_start (time), grace_minutes, half_day_hours, timezone.
+attendance_status(check_in, check_out, s) -> 'present'|'late'|'half_day'|'missing_checkout':
+- convert check_in to s.timezone; late if local time is AFTER office_start + grace (exactly 09:15 is NOT late, 09:16 is late);
+- if check_out exists and hours worked < half_day_hours -> 'half_day';
+- if no check_out and the day is over -> 'missing_checkout' (take a `day_over: bool` argument).
+daily_status(day, employee_join, employee_exit, record, approved_leave, holidays, s, today) -> str | None:
+None if weekend/holiday or the employee had not joined / had left; 'on_leave' if approved leave covers the day;
+the record's computed status if a record exists; 'absent' if the day is before today and there is no record;
+None for today/future days with no record. This function is the SINGLE source of truth for dashboards, payroll and AI.
+Write pytest tests for every branch. Output only the files.
+
+S3  [T+0:20-0:30] Payroll maths
+Create: rules/payroll.py, tests/test_payroll.py
+ACCEPT: tests pass, including every tax slab boundary.
+PROMPT:
+Write rules/payroll.py using Decimal.
+compute_tax_monthly(gross_monthly) -> Decimal: annual = gross_monthly * 12; slabs: 0..600000 => 0;
+600000..1200000 => 5% of the part above 600000; 1200000..2400000 => 30000 + 15% of the part above 1200000;
+2400000..3600000 => 210000 + 25% of the part above 2400000; above 3600000 => 510000 + 35% of the part above 3600000.
+Monthly tax = annual tax / 12, rounded to 2 decimals.
+compute_payslip(basic, join_date, exit_date, month, working_days_in_month, payable_working_days, absent_days, unpaid_days,
+half_days) -> dict with keys basic, gross, working_days, absent_days, unpaid_days, half_days, deduction, tax, net.
+gross = 1.5 * basic. per_day = gross / working_days_in_month. deduction = per_day * (absent_days + unpaid_days + 0.5*half_days).
+Joiners/leavers: payable_working_days (days between join and exit inside the month) replaces the working days for proration:
+prorated_gross = per_day * payable_working_days, and deduction uses the same per_day. Tax is computed on the full
+(unprorated) monthly gross, as decided in PROJECT.md. net = prorated_gross - deduction - tax.
+Tests: each slab boundary (annual 600k, 1.2M, 2.4M, 3.6M), a full-month employee with no absences, one with 2 absences and
+1 half day, a mid-month joiner. Output only the files.
+
+S4  [T+0:30] Leave balance + geo
+Create: rules/leave.py, rules/geo.py, tests
+PROMPT:
+Write rules/leave.py: leave_balance(quota: int|None, approved_days: int) -> int|None (None means unlimited);
+overlaps(a_start, a_end, b_start, b_end) -> bool. Write rules/geo.py: haversine_m(lat1,lng1,lat2,lng2) -> float metres.
+Add pytest tests. Output only the files.
+THEN: push to main and tell the team chat "rules are in".
+
+S5  [T+0:30-1:00] Check-in / check-out
+Create: modules/attendance/{router,service,repo,schemas}.py
+Endpoints: POST /attendance/check-in, POST /attendance/check-out
+ACCEPT: first check-in 201, second same day 409 code "already_checked_in"; check-out before 5h gives half_day;
+check-out without check-in returns 422 "no_check_in".
+PROMPT:
+Implement check-in/out per PROJECT.md section 7 and 9. Use Taha's deps: current_user and require_role (employee, hr -
+own record only; the employee_id comes from current_user, never from the request body). Server time only (UTC now),
+today's date computed in settings.timezone. Insert attendance(status via rules.attendance_status, source='web').
+Check-out sets check_out, then recomputes status (half_day if under half_day_hours). Raise AppError(409,'already_checked_in').
+Return {data:{date, check_in, check_out, status}}. Output only the files.
+
+S6  [T+1:00-1:30] Calendar + daily board
+Endpoints: GET /attendance?from&to&employee_id, GET /attendance/board?date&department_id
+ACCEPT: Employee asking for another employee_id still only gets own; the board shows absent/on_leave for people with no record.
+PROMPT:
+Implement GET /attendance (calendar): for each day in the range return {date, status, check_in, check_out} using
+rules.daily_status over stored rows + approved leave + holidays (so absent and on_leave days appear without stored rows).
+Employees are forced to their own employee_id via scoped_employee_id; Admin/HR may pass employee_id.
+GET /attendance/board?date&department_id (Admin, HR): one row per active employee with status for that date, with
+department filter, and counts per status. Output only the files.
+Also export service functions for Abdullah: get_attendance_summary(session, user, from, to, department_id) returning counts per status,
+attendance rate (formula in PROJECT.md section 11) and late counts per employee.
+
+S7  [T+1:30-1:50] Corrections
+Endpoints: POST /attendance/corrections, GET /attendance/corrections?status, PATCH /attendance/corrections/{id}
+ACCEPT: Employee requests with a reason; HR approves; the attendance row is upserted with source='correction'; Employee gets a notification.
+PROMPT:
+Implement corrections: Employee POST {date, new_check_in, new_check_out, reason(required)} -> pending. GET lists
+(Employee own, HR/Admin all, optional status filter). HR PATCH {decision: approved|rejected, comment}: on approve,
+upsert the attendance row (source='correction') and recompute status with rules.attendance_status; notify the employee
+(core/notify.py); audit-log (core/audit.py) with before/after. Admin may view but not decide. Output only the files.
+
+S8  [T+1:50-2:20] Leave: apply, cancel, list, balance
+Endpoints: POST /leave, PATCH /leave/{id}/cancel, GET /leave, GET /leave/balance
+ACCEPT: overlap gives 422 "overlap"; more days than balance gives 422 "insufficient_balance"; weekend/holiday days are not counted;
+unpaid leave has no limit.
+PROMPT:
+Implement leave per PROJECT.md section 7 and 9. POST /leave {leave_type_id, start_date, end_date, reason}: compute days with
+rules.working_days (skip weekends and holidays; 0 working days => 422 "no_working_days"); reject if it overlaps another
+pending/approved request of the same employee (422 "overlap"); reject if days > remaining balance for that leave type this calendar
+year (422 "insufficient_balance"); insert as pending. Employees and HR create for themselves only.
+PATCH /leave/{id}/cancel: owner may cancel a pending request (or future approved one). GET /leave?status&employee_id:
+Employee own, HR/Admin all. GET /leave/balance: for each leave type {leave_type_id, name, quota, used, remaining} where used is the
+sum of APPROVED days this calendar year (computed, never stored). Output only the files.
+
+S9  [T+2:20-2:40] Leave decisions
+Endpoint: PATCH /leave/{id}/decide
+ACCEPT: HR approves/rejects with a comment; balance updates after approval; Employee gets a notification; audit row written; Employee cannot call it (403).
+PROMPT:
+Implement PATCH /leave/{id}/decide {decision: approved|rejected, comment} (HR only; comment required when rejecting).
+Only pending requests can be decided (else 409). Re-check the overlap and balance at approval time. Notify the employee
+(core/notify.py) and audit-log with before/after (core/audit.py). Also export service functions for Abdullah:
+get_leave_summary(session, user, from, to, department_id) with approved days per leave type and per department and utilization
+(approved days / quota) per PROJECT.md section 11, and get_my_leave_balance(session, user). Output only the files.
+
+S10 [T+2:40-2:55] Payroll input helper (Taha's payroll endpoint calls it)
+Create: modules/attendance/payroll_inputs.py
+PROMPT:
+Write async def payroll_inputs(session, month: date) -> list[dict]. For each active/probation employee whose employment overlaps
+the month, return {employee_id, basic_salary, join_date, exit_date, working_days_in_month, payable_working_days, absent_days,
+unpaid_days, half_days}. absent_days/half_days come from rules.daily_status over the payable days; unpaid_days are approved
+leave days of unpaid leave types (is_paid=false) within the month on working days. Use the same helpers as the attendance
+board. Output only the file.
+THEN: tell Taha "payroll inputs ready".
+
+S11 [ONLY if the core demo already works] Bonus: late penalty
+PROMPT:
+Behind settings.late_penalty_enabled add: every 3 'late' days in a month count as 0.5 absent day in payroll_inputs.
+Add a pytest case. Output only the changed files.
+
+S12 [T+3:15-3:45, after feature freeze] Rehearsal
+Run the whole demo script (PROJECT.md section 14) on a FRESH database. Fix bugs in your modules only.
+Run pytest and make sure everything passes. Help Taha and Farhan with integration issues.
+
+---------------------------------------------------------------------
+PROGRESS FILE (create progress/SAQIB.txt and append a line per finished task)
+---------------------------------------------------------------------
+S1 done - calendar tests pass
+S2 done - daily_status pushed
+S5 in progress - check-in works, check-out not tested
+
+IF YOU ARE STUCK FOR MORE THAN 15 MINUTES: ask the team chat, do not burn quota looping.

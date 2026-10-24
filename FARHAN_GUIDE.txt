@@ -1,0 +1,177 @@
+=====================================================================
+FARHAN GUIDE - Frontend lead: UI/UX, client state, responsiveness
+HCM Lite - Saylani Hackathon - works with ANY AI (Claude, ChatGPT, Gemini, DeepSeek, Cursor, Lovable...)
+=====================================================================
+
+HOW TO USE THIS FILE (read once)
+1. Open any AI. Attach or paste: PROJECT.md (sections 2, 6, 8, 9, 11) and this guide.
+2. Paste the START PROMPT below.
+3. Do ONE task at a time: paste that task's PROMPT, put the code in frontend/, run it, check the ACCEPT line.
+4. After each task: git commit, then add one line to progress/FARHAN.txt (example: "F4 done - login and setup screens").
+5. If the AI quota runs out: open another account/AI, paste the RESUME PROMPT, attach progress/FARHAN.txt. Continue from the next task.
+
+QUOTA-SAVING RULES
+- One task (one page or one component group) per chat. Start a NEW chat for each task.
+- Paste only the files the task needs (for example src/api/client.ts and the page you are changing).
+- End every prompt with: "Output only the changed or new files, no explanations."
+- Build with mocks first (VITE_USE_MOCKS=true) so you are never blocked on the backend.
+- Reuse components. Do not ask the AI to restyle the whole app. Keep the design tokens file as the only place for colors.
+- Free fallbacks if everyone is out of quota: Gemini, ChatGPT free, DeepSeek, Claude free tier.
+
+---------------------------------------------------------------------
+START PROMPT (paste first in every new chat)
+---------------------------------------------------------------------
+You are Farhan's coding assistant on the HCM Lite hackathon project. I own everything in frontend/.
+Stack: Vite + React + TypeScript + Tailwind CSS, react-router, @tanstack/react-query, recharts, @supabase/supabase-js.
+Design language: ultra-minimal, high contrast, clean typography, distraction-free. One typeface (Inter or system UI), one accent
+color, white and near-black surfaces, hairline borders, no gradients, big touch targets, responsive from 375px.
+Every page needs loading (skeleton), empty and error states.
+Auth: Supabase is used ONLY for login (supabase-js). All data comes from the FastAPI backend at VITE_API_URL with
+Authorization: Bearer <supabase access token>. Responses are {data} or {error:{code,message,fields}}. Show error.fields next to the
+right inputs. Statuses: present, late, half_day, absent, missing_checkout, on_leave.
+Roles: admin, hr, employee (menus and permissions in PROJECT.md section 8). Never put any secret in the frontend: only the Supabase
+ANON key. Any AI output must show an "AI-generated" label.
+One task at a time. Output only changed or new files, no explanations.
+
+---------------------------------------------------------------------
+RESUME PROMPT (use after switching AI or account)
+---------------------------------------------------------------------
+I am Farhan on the HCM Lite frontend; my previous AI session ended (quota). Attached: PROJECT.md, my progress/FARHAN.txt, and
+the files relevant to my next task (src/api/client.ts, the design tokens file, and the page I am changing).
+My next task is <TASK ID> from my guide. Keep the same design tokens, components and conventions. Output only changed or new files.
+
+---------------------------------------------------------------------
+TASKS (do in order; times are from the 4-hour start)
+---------------------------------------------------------------------
+
+F1  [T+0:00-0:20] Scaffold + design system
+Create: frontend/ (Vite React TS), tailwind config, src/components/ui/*, src/lib/tokens
+ACCEPT: a demo page shows every base component in light mode (and dark if easy).
+PROMPT:
+Scaffold a Vite + React + TypeScript + Tailwind project. Install react-router-dom, @tanstack/react-query, @supabase/supabase-js,
+recharts. Define design tokens (CSS variables: background, foreground, muted, border, accent, danger, success) and build minimal
+components: Button (primary/secondary/ghost), Input, Textarea, Select, Card, Table, Modal, Badge (status colors for present, late,
+half_day, absent, missing_checkout, on_leave), Toast, Skeleton, EmptyState, ErrorState, PageHeader, StatCard. Ultra-minimal high
+contrast style, Inter font, responsive from 375px. Output only the files.
+
+F2  [T+0:20-0:40] API client + mocks + auth
+Create: src/api/client.ts, src/api/mocks.ts, src/lib/supabase.ts, src/auth/AuthProvider.tsx
+ACCEPT: with VITE_USE_MOCKS=true the app runs without a backend; with false it calls VITE_API_URL with a Bearer token.
+PROMPT:
+Write src/api/client.ts: a typed fetch wrapper api.get/post/put/patch/delete that adds the Supabase access token as a Bearer header,
+unwraps {data} (and {data, meta} for lists), and throws an ApiError {status, code, message, fields} for {error}. Add
+src/api/mocks.ts with realistic mock responses for the endpoints in PROJECT.md section 9, enabled by VITE_USE_MOCKS=true.
+Write AuthProvider: Supabase session, after login call GET /me and keep {role, employee_id, must_change_password} in context;
+logout; react-query provider. Output only the files.
+
+F3  [T+0:40-1:00] Login, setup, change password, routing
+Create: pages/Login.tsx, pages/Setup.tsx, pages/ChangePassword.tsx, src/routes.tsx, route guards
+ACCEPT: empty DB -> app opens the Setup screen; after login the user lands on their role's dashboard; must_change_password forces
+the change screen; a wrong-role URL redirects away.
+PROMPT:
+Build the pages: Setup (calls GET /setup/status; if needs_setup show a form company name + admin email + password -> POST /setup;
+otherwise redirect to login), Login (Supabase signInWithPassword), ChangePassword (POST /auth/change-password; blocks all other
+routes while must_change_password is true). Add route guards by role: /admin/*, /hr/*, /employee/*. Output only the files.
+
+F4  [T+1:00-1:20] App shells + menus + notifications
+Create: layouts/AppShell.tsx, menus config, NotificationsBell
+ACCEPT: three roles show different menus; on a 375px phone the menu becomes a drawer.
+PROMPT:
+Build AppShell with a sidebar (drawer on mobile), top bar with the user's role label, logout and a NotificationsBell
+(GET /notifications, unread count, dropdown list, PATCH /notifications/{id}/read). Menus:
+Admin: Dashboard, Setup, Logins, Employees, Payroll, Announcements, Audit log, AI assistant.
+HR: Dashboard, Employees, Attendance board, Corrections, Leave inbox, Payroll, Announcements, My check-in, My leave, AI assistant.
+Employee: Dashboard, Check in, My attendance, Leave, Payslips, Profile, Announcements, AI assistant.
+Output only the files.
+
+F5  [T+1:20-1:50] Admin setup screens
+Pages: Settings (company, office hours, grace, weekend, office lat/lng + radius), Departments, Designations, Leave types
+(with "Add default leave types" button), Holidays, Logins (create HR, deactivate, reset password)
+ACCEPT: Admin can set up everything; HR sees these read-only.
+PROMPT:
+Build the Admin setup pages against the endpoints in PROJECT.md section 9 (settings, departments, designations, leave-types,
+leave-types/defaults, holidays, users/hr, users/{id}/active, users/{id}/reset-password). Use one reusable simple CRUD table +
+modal component for the list-style pages. Show server validation errors on fields. For HR, render the same pages read-only.
+Output only the files.
+
+F6  [T+1:50-2:20] Employees (HR)
+Pages: Employee list (search, department/status filters, paging), Register employee form, Edit, Employee 360, Salary editor
+ACCEPT: field-level errors from the server appear under inputs; the 360 page shows profile, attendance summary, leave balances.
+PROMPT:
+Build the Employees pages: list with server-side search (q), department and status filters, paging (meta.total); a
+"Register employee" modal/page (fields: code, email, full_name, phone, address, gender, department, designation, join_date, status,
+basic_salary, temp_password) with field errors from error.fields; edit; Employee 360 view (GET /employees/{id}); salary editor
+(PUT /employees/{id}/salary, HR only). Admin sees these read-only. Add "Export CSV" (GET /employees/export) for HR.
+Output only the files.
+
+F7  [T+2:20-2:45] Employee dashboard, check-in, attendance, corrections
+ACCEPT: the Check in button shows the server time and status; a second check-in shows a friendly "already checked in".
+PROMPT:
+Build the Employee pages: a Check-in widget (one big button; POST /attendance/check-in and /check-out; handle 409
+already_checked_in with a friendly message; show today's status and times), My attendance (monthly calendar from GET /attendance
+with status badges), Request correction modal (date, times, reason -> POST /attendance/corrections), and the personal dashboard
+(GET /dashboard/me: hours this week vs 40, late count, leave balance, last payslip, announcements, "Ask my assistant" button).
+Output only the files.
+
+F8  [T+2:20-2:45] Leave screens + smart leave
+ACCEPT: typing a sentence pre-fills the form with the AI's suggestion; nothing submits until the user clicks Apply.
+PROMPT:
+Build Leave pages: balance cards (GET /leave/balance), history table with cancel for pending, Apply form (leave type, dates, reason)
+showing 422 errors (overlap, insufficient_balance) as clear messages. Add a "Smart leave" box above the form: textarea ->
+POST /ai/smart-leave -> pre-fills the form (type, start, end, reason), shows an "AI-generated" label, and the user must confirm
+by pressing Apply. If smart-leave fails, just show the normal form with a small note. Output only the files.
+
+F9  [T+2:45-3:05] HR operations
+Pages: Attendance board, Corrections inbox, Leave inbox
+PROMPT:
+Build HR pages: Attendance board (GET /attendance/board with date and department filters, status badges, counts per status),
+Corrections inbox (list pending, approve/reject with comment -> PATCH), Leave inbox (list pending, approve/reject with required
+comment on reject -> PATCH /leave/{id}/decide). Output only the files.
+
+F10 [T+2:45-3:05] Payroll + payslips
+ACCEPT: HR creates/recomputes a draft; Admin sees a Finalize button with a confirmation dialog; after finalize everything is read-only
+and shows a "Locked" badge; Employee downloads their PDF.
+PROMPT:
+Build Payroll pages: HR: month picker -> POST /payroll/runs, table of payslips (employee, gross, deduction, tax, net), recalculate
+button (disabled when finalized). Admin: same table read-only plus "Finalize" (POST /payroll/runs/{id}/finalize) behind a confirm
+dialog. Payslips page: list (GET /payslips) with Download PDF (GET /payslips/{id}/pdf as a blob download). Handle 409 run_finalized.
+Output only the files.
+
+F11 [T+3:05-3:25] Dashboards with charts + AI summarize
+PROMPT:
+Build HR and Admin dashboards (GET /dashboard/hr and /dashboard/admin) with date range and department filters, KPI StatCards and
+Recharts charts (attendance trend line, absenteeism by dept bar, leave by type bar, headcount by dept, payroll cost by dept),
+a top 5 late-comers list, audit feed (Admin), and a "Summarize" button -> POST /ai/summarize -> bullets under an "AI-generated" label.
+Every chart needs empty and loading states. Output only the files.
+
+F12 [T+3:05-3:25] AI chat panel (all roles)
+PROMPT:
+Build an AI assistant page and a slide-over panel: message list, input, loading indicator, "AI-generated" label on answers,
+POST /ai/chat {message, history}. Show a friendly fallback on 429 or timeout. Suggest 3 starter questions per role. Output only the files.
+
+F13 [T+3:05-3:25] Announcements, audit log, profile, notifications page
+PROMPT:
+Build: Announcements (everyone reads; Admin/HR get a post form), Audit log table for Admin (filters actor/entity, paging, expandable
+before/after JSON), Profile page (Employee edits phone and address only -> PATCH /me/profile), Notifications page.
+Output only the files.
+
+F14 [T+3:25-3:45, after feature freeze] Polish + rehearsal
+Check on a 375px phone and a laptop: loading, empty, error states on every page; no text overflow; buttons large enough to tap.
+Optional if time: dark mode via Tailwind dark: classes. Then click through the full demo script (PROJECT.md section 14) on the
+hosted link with a FRESH database and report bugs to the owners in the team chat.
+
+F15 [STRETCH, only if everything above works] Capacitor Android
+PROMPT:
+Add Capacitor to the Vite app: npm i @capacitor/core @capacitor/cli @capacitor/android; npx cap init "HCM Lite" com.hcmlite.app --web-dir dist;
+npm run build; npx cap add android; npx cap sync. List the exact steps to open it in Android Studio and build a debug APK.
+Make sure VITE_API_URL points to the hosted backend and CORS allows the app origin (capacitor://localhost and http://localhost).
+Output only the changed files and the step list.
+
+---------------------------------------------------------------------
+PROGRESS FILE (create progress/FARHAN.txt and append a line per finished task)
+---------------------------------------------------------------------
+F1 done - design system
+F3 done - login/setup routes
+F6 in progress - list done, register form not wired
+
+IF YOU ARE STUCK FOR MORE THAN 15 MINUTES: ask the team chat, do not burn quota looping.

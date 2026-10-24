@@ -1,0 +1,16 @@
+# Farhan Ali - Frontend Progress Tracker
+# Started: Saylani Hackathon 24 Oct 2026
+
+F1 done - Design system, tokens, and base UI primitives built
+F2 done - Typed API client, comprehensive mock data engine, Supabase AuthProvider
+F3 done - Login screen, initial /setup flow, forced change-password guard, role guards
+F4 done - AppShell with responsive mobile drawer (375px), NotificationsBell, quick demo role switcher
+F5 done - Admin setup screens: CompanySettings, Organization (with "Add default leave types"), Logins
+F6 done - Employee Directory with search/filters, Register modal, Employee 360 view, salary editor, CSV export
+F7 done - 1-Click Check-in/out terminal, Attendance calendar, Correction appeal modal, personal dashboard
+F8 done - Leave balance cards, history, Apply form, Smart Leave AI natural language box
+F9 done - HR operations: Live Attendance Board, Corrections Inbox, Leave Approvals Inbox with mandatory comments
+F10 done - Payroll: HR draft computation & recalculation, Admin Finalize & lock, Payslips view
+F11 done - Executive Admin & HR Dashboards with Recharts analytics and "Summarize with AI" briefing
+F12 done - AI Assistant chat interface with starter prompts and tool execution labels
+F13 done - Announcements broadcast board, immutable Audit Log table with before/after JSON diffs, Profile editor

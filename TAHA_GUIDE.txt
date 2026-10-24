@@ -1,0 +1,171 @@
+=====================================================================
+TAHA GUIDE - Backend lead: core, auth, org setup, employees, payroll endpoints, comms
+HCM Lite - Saylani Hackathon - works with ANY AI (Claude, ChatGPT, Gemini, DeepSeek, Cursor...)
+=====================================================================
+
+HOW TO USE THIS FILE (read once)
+1. Open any AI. Attach or paste these 3 files: PROJECT.md, supabase/schema.sql, this guide.
+2. Paste the START PROMPT below.
+3. Do ONE task at a time: paste that task's PROMPT, get code, put it in the repo, run it, check the ACCEPT line.
+4. After each task: git commit, then add one line to progress/TAHA.txt (example: "T4 done - /setup works").
+5. If the AI quota runs out: open another account/AI, paste the RESUME PROMPT, attach progress/TAHA.txt. Continue from the next task. No work is lost.
+
+QUOTA-SAVING RULES
+- One task per chat. Start a NEW chat for each task (long chats burn quota).
+- Paste only the files the task needs, never the whole repo.
+- End every prompt with: "Output only the changed or new files, no explanations."
+- If an error appears, paste only the error text and the one file involved.
+- Free fallbacks if everyone is out of quota: Gemini, ChatGPT free, DeepSeek, Claude free tier.
+
+---------------------------------------------------------------------
+START PROMPT (paste first in every new chat)
+---------------------------------------------------------------------
+You are Taha's coding assistant on the HCM Lite hackathon project (FastAPI + Supabase Postgres/Auth + React).
+Read PROJECT.md and schema.sql: they are binding (rules, API contract, error envelope, folder layout).
+I own: backend/app/main.py, core/*, db.py, modules/auth, settings, employees, comms, and payroll/router.py.
+Do not edit files owned by others (rules/* and attendance/leave are Saqib's; ai/dashboards/pdf are Abdullah's).
+Stack: Python 3.11, FastAPI, Pydantic v2, SQLAlchemy 2 async + asyncpg, Supabase Admin API for creating users.
+Every module has router.py (HTTP), service.py (rules and permissions), repo.py (SQL), schemas.py.
+Always use the response envelope {data} / {error:{code,message,fields}}.
+I will give you one task at a time. Output only changed or new files, no explanations.
+
+---------------------------------------------------------------------
+RESUME PROMPT (use after switching AI or account)
+---------------------------------------------------------------------
+I am Taha on the HCM Lite project; my previous AI session ended (quota). Attached: PROJECT.md, schema.sql, my
+progress/TAHA.txt, and the files I have written so far (paste only the ones relevant to the next task).
+Read PROJECT.md first. My next task is <TASK ID> from my guide. Continue from there using the same conventions,
+and output only changed or new files.
+
+---------------------------------------------------------------------
+TASKS (do in order; times are from the 4-hour start)
+---------------------------------------------------------------------
+
+T1  [T+0:00-0:10] Skeleton
+Create: backend/app/main.py, core/config.py, db.py, requirements.txt, .env.example, GET /health.
+ACCEPT: uvicorn starts, /health returns {"data":{"ok":true}}, CORS reads CORS_ORIGINS from env.
+PROMPT:
+Create the FastAPI skeleton from PROJECT.md section 3. core/config.py uses pydantic-settings and reads the env vars in
+section 5. db.py creates an async SQLAlchemy engine from DATABASE_URL with connect_args={"statement_cache_size":0} and
+exposes get_session() as a FastAPI dependency. main.py mounts routers under /api and adds CORS and GET /health.
+Add requirements.txt (fastapi, uvicorn[standard], sqlalchemy[asyncio], asyncpg, pydantic-settings, supabase, pyjwt[crypto],
+httpx, reportlab, python-multipart, pytest) and .env.example. Output only the files.
+
+T2  [T+0:10-0:30] Errors, security, deps  (EVERYONE IS BLOCKED ON THIS, push fast)
+Create: core/errors.py, core/security.py, core/deps.py
+ACCEPT: a route with require_role("admin") returns 401 without token, 403 with an employee token; validation errors
+come out as {"error":{"code":"validation_error","message":...,"fields":{...}}}.
+PROMPT:
+Write core/errors.py: an AppError(status, code, message, fields=None) class and global handlers for AppError,
+HTTPException and RequestValidationError that return exactly {"error":{"code","message","fields"}}.
+Write core/security.py: verify a Supabase access token from the Authorization Bearer header. Use PyJWT. If SUPABASE_URL is
+set, try JWKS at {SUPABASE_URL}/auth/v1/.well-known/jwks.json first; fall back to HS256 with SUPABASE_JWT_SECRET.
+Return the user id (sub). Write core/deps.py: current_user (verify token, load row from profiles: role, is_active,
+must_change_password, plus employee_id from employees.user_id; 401 if bad token, 403 if inactive),
+require_role(*roles) returning a dependency, and scoped_employee_id(user) that returns the user's employee_id for role
+employee (and for hr/admin returns None meaning all). Never read the role from the token. Output only the files.
+THEN: push to main and tell the team chat "core is in".
+
+T3  [T+0:30-0:40] Audit + notify helpers
+Create: core/audit.py, core/notify.py
+ACCEPT: calling log() inserts a row in audit_logs; notify() inserts a row in notifications.
+PROMPT:
+Write core/audit.py with async def log(session, actor_id, action, entity, entity_id, before, after) inserting into
+audit_logs (jsonb for before/after). Write core/notify.py with async def notify(session, user_id, title, body=None)
+inserting into notifications. Use plain SQL via sqlalchemy text(). Output only the files.
+
+T4  [T+0:40-1:00] Setup + auth module
+Create: modules/auth/{router,service,repo,schemas}.py
+Endpoints: GET /setup/status -> {needs_setup}, POST /setup, GET /me, POST /auth/change-password.
+ACCEPT: on empty DB, POST /setup creates settings + admin, admin can log in from the frontend, /setup the second time returns 409.
+PROMPT:
+Implement modules/auth per PROJECT.md section 6 and 9. GET /setup/status returns {data:{needs_setup: bool}} (true when
+the settings table is empty). POST /setup {company_name, admin_email, admin_password} works only when settings is empty
+(else 409 "already_setup"): insert the settings row, create the admin with the Supabase Admin API
+(supabase-py: client.auth.admin.create_user({"email","password","email_confirm":True})), insert profiles(role='admin').
+Also on app startup, if ADMIN_EMAIL and ADMIN_PASSWORD are set and no admin profile exists, create that admin.
+GET /me returns {id,email,role,employee_id,must_change_password}. POST /auth/change-password {new_password} updates the
+password via admin.update_user_by_id and sets profiles.must_change_password=false. Audit-log setup. Output only the files.
+
+T5  [T+1:00-1:20] Settings + organization
+Create: modules/settings/{router,service,repo,schemas}.py
+Endpoints: GET/PUT /settings; CRUD /departments, /designations, /leave-types, /holidays; POST /leave-types/defaults.
+ACCEPT: Admin can create all of them; HR can only GET; duplicates return 409.
+PROMPT:
+Implement modules/settings per PROJECT.md section 9. Admin writes, HR reads (Employees are blocked from these).
+Settings validations: grace>=0, half_day_hours>0, weekend_days is a subset of 1..7, office_radius_m>0, lat/lng in range.
+POST /leave-types/defaults adds annual (14, paid), sick (8, paid), casual (10, paid), unpaid (null quota, unpaid) skipping
+names that already exist. Audit-log every create/update/delete. Output only the files.
+
+T6  [T+1:20-1:35] Logins management
+Create: modules/auth/users_router.py (or add to the auth module)
+Endpoints: POST /users/hr, PATCH /users/{id}/active, POST /users/{id}/reset-password.
+ACCEPT: Admin creates an HR login, can deactivate it (deactivated user gets 403), reset gives a new temp password and
+must_change_password=true.
+PROMPT:
+Implement Admin-only login management. POST /users/hr {email, full_name, temp_password}: create the Supabase user with the
+Admin API, insert profiles(role='hr', must_change_password=true) AND an employees row for the HR person (HR is also an
+employee, so the body must also include code and basic_salary; join_date defaults to today).
+PATCH /users/{id}/active {is_active}. POST /users/{id}/reset-password {temp_password}. Audit-log all. Output only the files.
+
+T7  [T+1:35-2:05] Employees
+Create: modules/employees/{router,service,repo,schemas}.py
+Endpoints: POST /employees, PUT /employees/{id}, GET /employees, GET /employees/{id}, PATCH /me/profile, PUT /employees/{id}/salary.
+ACCEPT: HR registers an employee, that email can log in with the temp password and is forced to change it; Employee can
+read only self; search and paging work; PATCH /me/profile only touches phone and address.
+PROMPT:
+Implement modules/employees per PROJECT.md. POST /employees (HR only) {code, email, full_name, phone, address, gender,
+department_id, designation_id, join_date, status, basic_salary, temp_password}: validate (salary>0, unique code/email,
+known department, valid email), create the Supabase user (email_confirm true), profiles(role='employee',
+must_change_password=true), insert employees row, notify the new user. Return field-level errors in error.fields.
+GET /employees: server-side q (name/code/email ilike), department_id, status filters, page/page_size with meta.total (Admin, HR).
+GET /employees/{id}: the 360 view {profile, attendance_summary, leave_balances, last_payslip}; call
+attendance_summary and leave_balance functions from Saqib's modules if they exist, otherwise return placeholders and
+leave a TODO. Employees may only read their own id (use scoped_employee_id; else 403).
+PATCH /me/profile {phone, address} for any role on their own record. PUT /employees/{id}/salary {basic_salary} HR only.
+Audit-log create, update and salary changes with before/after. Output only the files.
+
+T8  [T+2:05-2:35] Payroll endpoints (needs Saqib's rules/payroll + payroll input helper)
+Create: modules/payroll/router.py, service.py, repo.py, schemas.py (pdf.py is Abdullah's)
+Endpoints: POST /payroll/runs, GET /payroll/runs, GET /payroll/runs/{id}, POST /payroll/runs/{id}/finalize, GET /payslips.
+ACCEPT: HR creates a draft for a month, recreating it recalculates; Admin finalizes; editing after finalize fails (409);
+Employee GET /payslips returns only own.
+PROMPT:
+Implement payroll endpoints per PROJECT.md. POST /payroll/runs {month} (HR): upsert a draft payroll_runs row; for each
+active employee call Saqib's payroll input helper and rules.compute_payslip; upsert payslips rows; return the run with
+payslips. If the run is finalized return 409 "run_finalized". GET /payroll/runs and GET /payroll/runs/{id}: Admin and HR.
+POST /payroll/runs/{id}/finalize: Admin only; set status='finalized', finalized_by, finalized_at; notify each employee
+("Payslip ready for <month>"); audit-log. GET /payslips?month: Admin/HR all, Employee only own (scoped_employee_id).
+The PDF route lives in Abdullah's pdf.py, import and mount it, do not write it. Output only the files.
+
+T9  [T+2:35-2:55] Comms + audit endpoints
+Create: modules/comms/{router,service,repo,schemas}.py
+Endpoints: GET/POST /announcements, GET /notifications, PATCH /notifications/{id}/read, GET /audit.
+ACCEPT: Admin and HR can post; everyone reads; notifications are per user; /audit is Admin only with filters and paging.
+PROMPT:
+Implement modules/comms per PROJECT.md: announcements (Admin and HR post, all read, newest first), notifications (current
+user's only, unread count in meta, PATCH marks read), GET /audit?actor&entity&page (Admin only; newest first; return actor
+email by joining profiles/auth when possible, otherwise actor id). Audit-log announcement posts. Output only the files.
+
+T10 [T+2:55-3:15] CSV export (+ CSV import dry-run ONLY if ahead of schedule)
+Endpoints: GET /employees/export (HR), POST /employees/import?dry_run=true (HR).
+PROMPT:
+Add GET /employees/export returning a CSV of employees (StreamingResponse). Then POST /employees/import?dry_run=true
+(multipart CSV): validate each row (required fields, unique code/email within file and DB, valid email, known department name,
+ISO date, salary>0) and return {data:{valid_rows:n, errors:[{row, field, reason}]}}; with dry_run=false create the
+valid rows the same way POST /employees does. Output only the files.
+
+T11 [T+3:15-3:45] Backend rehearsal (after feature freeze)
+Run the backend part of the demo script (PROJECT.md section 14) with curl or the frontend on a FRESH database.
+Check: every role gets 403 where the permission table says so; error envelope everywhere; /openapi.json loads.
+Fix bugs only. Help Abdullah with README and Farhan with integration problems.
+
+---------------------------------------------------------------------
+PROGRESS FILE (create progress/TAHA.txt and append a line per finished task)
+---------------------------------------------------------------------
+Example lines:
+T1 done - skeleton pushed
+T2 done - core pushed, team told
+T4 in progress - /setup works, /me not tested
+
+IF YOU ARE STUCK FOR MORE THAN 15 MINUTES: ask the team chat, do not burn quota looping.
