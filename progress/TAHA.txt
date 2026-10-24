@@ -1,0 +1,1 @@
+T1-T4 done - backend skeleton, core auth/security, audit helpers, setup, /me, and change-password endpoints.

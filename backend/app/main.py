@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import APIRouter, FastAPI
 
 from app.core.config import get_settings
@@ -12,9 +14,18 @@ from app.modules.leave.router import router as leave_router
 from app.modules.payroll.router import router as payroll_router
 from app.modules.settings.router import router as settings_router
 from app.modules.users.router import router as users_router
+from app.modules.auth.service import ensure_configured_admin
 
 settings = get_settings()
-app = FastAPI(title=settings.app_name, version="0.1.0")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await ensure_configured_admin()
+    yield
+
+
+app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
 register_error_handlers(app)
 api_router = APIRouter()
 

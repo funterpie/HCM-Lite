@@ -20,6 +20,7 @@ class CurrentUser:
     role: str
     is_active: bool
     must_change_password: bool
+    email: str | None = None
     employee_id: UUID | None = None
 
 
@@ -53,6 +54,7 @@ async def current_user(
         role=profile["role"],
         is_active=profile["is_active"],
         must_change_password=profile["must_change_password"],
+        email=claims.get("email"),
         employee_id=employee_id,
     )
 
