@@ -12,6 +12,7 @@ class Settings:
     half_day_hours: float
     timezone: str
     weekend_days: set[int] = field(default_factory=lambda: {6, 7})
+    late_penalty_enabled: bool = False
 
 
 def _local_datetime(value: datetime, zone: ZoneInfo) -> datetime:

@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.rules.payroll import compute_payslip, compute_tax_monthly
+from app.rules.payroll import compute_payslip, compute_tax_monthly, late_penalty_absent_days
 
 
 @pytest.mark.parametrize(
@@ -34,6 +34,10 @@ def test_tax_enters_next_slab_above_each_boundary(annual_gross, expected_monthly
     assert compute_tax_monthly(monthly_gross) == Decimal(expected_monthly_tax)
 
 
+def test_three_lates_add_half_an_absent_day_when_enabled():
+    assert late_penalty_absent_days(Decimal("1"), 3, True) == Decimal("1.5")
+
+
 def test_full_month_without_absences():
     payslip = compute_payslip(
         basic=Decimal("100000"),
@@ -55,8 +59,8 @@ def test_full_month_without_absences():
         "unpaid_days": Decimal("0"),
         "half_days": 0,
         "deduction": Decimal("0"),
-        "tax": Decimal("6250.00"),
-        "net": Decimal("143750.00"),
+        "tax": Decimal("10000.00"),
+        "net": Decimal("140000.00"),
     }
 
 
@@ -74,7 +78,7 @@ def test_absences_and_half_day_are_deducted():
     )
 
     assert payslip["deduction"] == Decimal("150000") / Decimal("22") * Decimal("2.5")
-    assert payslip["net"] == Decimal("150000") - payslip["deduction"] - Decimal("6250.00")
+    assert payslip["net"] == Decimal("150000") - payslip["deduction"] - Decimal("10000.00")
 
 
 def test_mid_month_joiner_prorates_gross_but_taxes_full_month_gross():
@@ -92,5 +96,5 @@ def test_mid_month_joiner_prorates_gross_but_taxes_full_month_gross():
 
     assert payslip["gross"] == Decimal("75000")
     assert payslip["working_days"] == 11
-    assert payslip["tax"] == Decimal("6250.00")
-    assert payslip["net"] == Decimal("68750.00")
+    assert payslip["tax"] == Decimal("10000.00")
+    assert payslip["net"] == Decimal("65000.00")

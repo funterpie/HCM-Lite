@@ -33,6 +33,14 @@ def compute_tax_monthly(gross_monthly: Decimal) -> Decimal:
     return (annual_tax / TWELVE).quantize(CENT, rounding=ROUND_HALF_UP)
 
 
+def late_penalty_absent_days(absent_days: Decimal | int, late_days: int, enabled: bool) -> Decimal:
+    """Add half an absent day for each complete group of three late days."""
+    absent = _decimal(absent_days)
+    if not enabled:
+        return absent
+    return absent + Decimal("0.5") * (late_days // 3)
+
+
 def compute_payslip(
     basic: Decimal,
     join_date: date,

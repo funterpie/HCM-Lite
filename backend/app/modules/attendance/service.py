@@ -1,5 +1,6 @@
 """Attendance check-in and check-out service functions."""
 
+from calendar import monthrange
 from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
 from typing import Any
@@ -14,32 +15,35 @@ from app.core.errors import AppError
 from app.core.audit import log as audit_log
 from app.core.notify import notify
 from app.rules.attendance import Settings, attendance_status, daily_status
+from app.rules.calendar import working_days
+from app.rules.payroll import late_penalty_absent_days
 
 
 async def _settings(session: AsyncSession) -> Settings:
     result = await session.execute(
         text(
-            "SELECT office_start, grace_minutes, half_day_hours, timezone "
-            ", weekend_days FROM settings WHERE id = 1"
+            "SELECT office_start, grace_minutes, half_day_hours, timezone, weekend_days, "
+            "late_penalty_enabled FROM settings WHERE id = 1"
         )
     )
     row = result.mappings().first()
     if row is None:
-        raise AppError(400, "settings_not_configured")
+        raise AppError(400, "settings_not_configured", "Company settings have not been configured.")
     return Settings(
         office_start=row["office_start"],
         grace_minutes=row["grace_minutes"],
         half_day_hours=float(row["half_day_hours"]),
         timezone=row["timezone"],
         weekend_days=set(row["weekend_days"] or {6, 7}),
+        late_penalty_enabled=bool(row["late_penalty_enabled"]),
     )
 
 
-def _employee_id(user: Any) -> str:
+def _employee_id(user: Any) -> Any:
     employee_id = user.get("employee_id") if isinstance(user, dict) else getattr(user, "employee_id", None)
     if employee_id is None:
-        raise AppError(403, "employee_record_required")
-    return str(employee_id)
+        raise AppError(403, "employee_record_required", "The signed-in user has no employee record.")
+    return employee_id
 
 
 def _today(settings: Settings) -> date:
@@ -83,12 +87,12 @@ async def check_in(session: AsyncSession, user: Any) -> dict[str, Any]:
         row = result.mappings().first()
         if row is None:
             await session.rollback()
-            raise AppError(409, "already_checked_in")
+            raise AppError(409, "already_checked_in", "You have already checked in today.")
         await session.commit()
         return _response(row)
     except IntegrityError as exc:
         await session.rollback()
-        raise AppError(409, "already_checked_in") from exc
+        raise AppError(409, "already_checked_in", "You have already checked in today.") from exc
 
 
 async def check_out(session: AsyncSession, user: Any) -> dict[str, Any]:
@@ -107,9 +111,9 @@ async def check_out(session: AsyncSession, user: Any) -> dict[str, Any]:
     )
     row = result.mappings().first()
     if row is None or row["check_in"] is None:
-        raise AppError(409, "not_checked_in")
+        raise AppError(409, "not_checked_in", "You must check in before checking out.")
     if row["check_out"] is not None:
-        raise AppError(409, "already_checked_out")
+        raise AppError(409, "already_checked_out", "You have already checked out today.")
 
     status = attendance_status(row["check_in"], now, settings)
     updated = await session.execute(
@@ -137,6 +141,7 @@ async def _attendance_days(
     employee_id: str | None = None,
     department_id: str | None = None,
     active_only: bool = False,
+    active_or_probation: bool = False,
 ) -> tuple[Settings, list[dict[str, Any]]]:
     settings = await _settings(session)
     employee_query = (
@@ -149,6 +154,8 @@ async def _attendance_days(
     )
     if active_only:
         employee_query += "AND e.status = 'active' "
+    elif active_or_probation:
+        employee_query += "AND e.status IN ('active', 'probation') "
     else:
         employee_query += "AND (e.status <> 'exited' OR e.exit_date >= :start_date) "
     employee_result = await session.execute(
@@ -254,7 +261,7 @@ async def get_attendance_calendar(
 ) -> dict[str, Any]:
     """Return daily computed attendance, forcing Employee callers to their own row."""
     if end < start:
-        raise AppError(400, "invalid_date_range")
+        raise AppError(400, "invalid_date_range", "The end date must be on or after the start date.")
     employee_filter = _employee_scope(user, employee_id)
     _, days = await _attendance_days(session, start, end, employee_id=employee_filter)
     return {"data": days}
@@ -289,7 +296,7 @@ async def get_attendance_summary(
 ) -> dict[str, Any]:
     """Summarize computed attendance for dashboards and AI tools."""
     if to_date < from_date:
-        raise AppError(400, "invalid_date_range")
+        raise AppError(400, "invalid_date_range", "The end date must be on or after the start date.")
     employee_filter = _employee_scope(user, None)
     _, days = await _attendance_days(
         session,
@@ -330,6 +337,102 @@ async def get_attendance_summary(
     }
 
 
+async def payroll_inputs(session: AsyncSession, month: date) -> list[dict[str, Any]]:
+    """Build payroll day inputs from shared computed attendance statuses."""
+    month_start = month.replace(day=1)
+    month_end = month.replace(day=monthrange(month.year, month.month)[1])
+    settings, status_rows = await _attendance_days(
+        session,
+        month_start,
+        month_end,
+        active_or_probation=True,
+    )
+    if not status_rows:
+        return []
+
+    employee_ids = list({str(row["employee_id"]) for row in status_rows})
+    employee_result = await session.execute(
+        text(
+            "SELECT id, basic_salary, join_date, exit_date FROM employees "
+            "WHERE id = ANY(:employee_ids)"
+        ),
+        {"employee_ids": employee_ids},
+    )
+    employees = {str(row["id"]): dict(row) for row in employee_result.mappings().all()}
+
+    holiday_result = await session.execute(
+        text("SELECT date FROM holidays WHERE date BETWEEN :start_date AND :end_date"),
+        {"start_date": month_start, "end_date": month_end},
+    )
+    holidays = {row["date"] for row in holiday_result.mappings().all()}
+    weekend = settings.weekend_days
+    working_in_month = len(working_days(month_start, month_end, holidays, weekend))
+
+    unpaid_result = await session.execute(
+        text(
+            "SELECT lr.employee_id, lr.start_date, lr.end_date "
+            "FROM leave_requests lr JOIN leave_types lt ON lt.id = lr.leave_type_id "
+            "WHERE lr.employee_id = ANY(:employee_ids) AND lr.status = 'approved' "
+            "AND lt.is_paid = false AND lr.start_date <= :month_end "
+            "AND lr.end_date >= :month_start"
+        ),
+        {
+            "employee_ids": employee_ids,
+            "month_start": month_start,
+            "month_end": month_end,
+        },
+    )
+    unpaid_ranges: dict[str, list[tuple[date, date]]] = {}
+    for row in unpaid_result.mappings().all():
+        unpaid_ranges.setdefault(str(row["employee_id"]), []).append(
+            (row["start_date"], row["end_date"])
+        )
+
+    statuses_by_employee: dict[str, list[dict[str, Any]]] = {}
+    for row in status_rows:
+        statuses_by_employee.setdefault(str(row["employee_id"]), []).append(row)
+
+    inputs = []
+    for employee_id, employee in employees.items():
+        join_date = employee["join_date"]
+        exit_date = employee["exit_date"]
+        payable_start = max(join_date, month_start)
+        payable_end = min(exit_date or month_end, month_end)
+        payable_days = working_days(payable_start, payable_end, holidays, weekend)
+        payable_date_set = set(payable_days)
+        relevant_statuses = [
+            row for row in statuses_by_employee.get(employee_id, [])
+            if date.fromisoformat(row["date"]) in payable_date_set
+        ]
+        absent_days = sum(row["status"] == "absent" for row in relevant_statuses)
+        late_days = sum(row["status"] == "late" for row in relevant_statuses)
+        absent_days = late_penalty_absent_days(
+            absent_days, late_days, settings.late_penalty_enabled
+        )
+        half_days = sum(row["status"] == "half_day" for row in relevant_statuses)
+
+        unpaid_dates: set[date] = set()
+        for leave_start, leave_end in unpaid_ranges.get(employee_id, []):
+            clipped_start = max(leave_start, payable_start)
+            clipped_end = min(leave_end, payable_end)
+            unpaid_dates.update(working_days(clipped_start, clipped_end, holidays, weekend))
+
+        inputs.append(
+            {
+                "employee_id": employee_id,
+                "basic_salary": employee["basic_salary"],
+                "join_date": join_date,
+                "exit_date": exit_date,
+                "working_days_in_month": working_in_month,
+                "payable_working_days": len(payable_days),
+                "absent_days": absent_days,
+                "unpaid_days": len(unpaid_dates),
+                "half_days": half_days,
+            }
+        )
+    return inputs
+
+
 def _correction_dict(row: Any) -> dict[str, Any]:
     return {
         "id": str(row["id"]),
@@ -356,9 +459,9 @@ async def request_attendance_correction(
     """Create a pending correction request for the caller's own employee record."""
     employee_id = _employee_id(user)
     if not reason.strip():
-        raise AppError(400, "reason_required")
+        raise AppError(400, "reason_required", "A correction reason is required.")
     if new_check_in is None and new_check_out is None:
-        raise AppError(400, "correction_time_required")
+        raise AppError(400, "correction_time_required", "Provide a corrected check-in or check-out time.")
     result = await session.execute(
         text(
             "INSERT INTO attendance_corrections "
@@ -388,7 +491,7 @@ async def list_attendance_corrections(
     """List corrections, forcing Employee callers to their own employee id."""
     employee_id = scoped_employee_id(user)
     if status is not None and status not in {"pending", "approved", "rejected", "cancelled"}:
-        raise AppError(400, "invalid_status")
+        raise AppError(400, "invalid_status", "The requested correction status is invalid.")
     result = await session.execute(
         text(
             "SELECT id, employee_id, date, new_check_in, new_check_out, reason, status, "
@@ -402,11 +505,11 @@ async def list_attendance_corrections(
     return {"data": [_correction_dict(row) for row in result.mappings().all()]}
 
 
-def _actor_id(user: Any) -> str:
+def _actor_id(user: Any) -> Any:
     value = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
     if value is None:
-        raise AppError(401, "unauthenticated")
-    return str(value)
+        raise AppError(401, "unauthenticated", "Authentication is required.")
+    return value
 
 
 async def decide_attendance_correction(
@@ -418,7 +521,7 @@ async def decide_attendance_correction(
 ) -> dict[str, Any]:
     """Approve or reject a pending correction; only HR routes to this service."""
     if decision not in {"approved", "rejected"}:
-        raise AppError(400, "invalid_decision")
+        raise AppError(400, "invalid_decision", "Decision must be approved or rejected.")
 
     result = await session.execute(
         text(
@@ -430,9 +533,9 @@ async def decide_attendance_correction(
     )
     correction = result.mappings().first()
     if correction is None:
-        raise AppError(404, "correction_not_found")
+        raise AppError(404, "correction_not_found", "The attendance correction was not found.")
     if correction["status"] != "pending":
-        raise AppError(409, "correction_already_decided")
+        raise AppError(409, "correction_already_decided", "The attendance correction was already decided.")
 
     actor_id = _actor_id(user)
     now = datetime.now(timezone.utc)
@@ -480,7 +583,7 @@ async def decide_attendance_correction(
     after = _correction_dict(updated)
     await audit_log(
         session,
-        user,
+        _actor_id(user),
         f"attendance_correction_{decision}",
         "attendance_correction",
         correction_id,
@@ -495,7 +598,7 @@ async def decide_attendance_correction(
     if employee_user_id is not None:
         await notify(
             session,
-            str(employee_user_id),
+            employee_user_id,
             f"Attendance correction {decision}",
             f"Your attendance correction for {correction['date'].isoformat()} was {decision}.",
         )
