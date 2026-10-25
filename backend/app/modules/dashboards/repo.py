@@ -192,3 +192,170 @@ async def get_present_today(
         {"department_id": department_id},
     )
     return dict(result.mappings().one())
+
+
+async def get_attrition(session: AsyncSession, from_: date, to: date) -> dict[str, Any]:
+    result = await session.execute(
+        text(
+            "WITH counts AS ("
+            "SELECT count(*) FILTER (WHERE exit_date BETWEEN :from_date AND :to_date) AS exits, "
+            "count(*) FILTER (WHERE join_date <= :from_date AND "
+            "(exit_date IS NULL OR exit_date >= :from_date)) AS start_count, "
+            "count(*) FILTER (WHERE join_date <= :to_date AND "
+            "(exit_date IS NULL OR exit_date >= :to_date)) AS end_count "
+            "FROM employees) SELECT exits::integer AS exits, "
+            "round(100.0 * exits / NULLIF((start_count + end_count) / 2.0, 0), 2) AS pct "
+            "FROM counts"
+        ),
+        {"from_date": from_, "to_date": to},
+    )
+    return dict(result.mappings().one())
+
+
+async def get_payroll_cost(
+    session: AsyncSession, month: date, department_id: str | None = None
+) -> dict[str, Any]:
+    result = await session.execute(
+        text(
+            "SELECT COALESCE(sum(p.gross), 0) AS gross, COALESCE(sum(p.net), 0) AS net "
+            "FROM payslips AS p JOIN payroll_runs AS r ON r.id = p.run_id "
+            "JOIN employees AS e ON e.id = p.employee_id "
+            "WHERE r.month = :month "
+            "AND (:department_id IS NULL OR e.department_id = CAST(:department_id AS uuid))"
+        ),
+        {"month": month, "department_id": department_id},
+    )
+    return dict(result.mappings().one())
+
+
+async def get_avg_salary_by_dept_designation(
+    session: AsyncSession,
+) -> list[dict[str, Any]]:
+    result = await session.execute(
+        text(
+            "SELECT d.id AS department_id, d.name AS department, "
+            "g.id AS designation_id, g.name AS designation, "
+            "round(avg(e.basic_salary * 1.5), 2) AS average_gross_salary "
+            "FROM employees AS e LEFT JOIN departments AS d ON d.id = e.department_id "
+            "LEFT JOIN designations AS g ON g.id = e.designation_id "
+            "WHERE e.status IN ('active', 'probation') "
+            "GROUP BY d.id, d.name, g.id, g.name ORDER BY d.name, g.name"
+        )
+    )
+    return [dict(row) for row in result.mappings().all()]
+
+
+async def get_headcount_by_dept(session: AsyncSession) -> list[dict[str, Any]]:
+    result = await session.execute(
+        text(
+            "SELECT d.id AS department_id, d.name AS department, "
+            "count(e.id)::integer AS headcount "
+            "FROM departments AS d LEFT JOIN employees AS e ON e.department_id = d.id "
+            "AND e.status IN ('active', 'probation') "
+            "AND e.join_date <= (clock_timestamp() AT TIME ZONE "
+            "(SELECT timezone FROM settings WHERE id = 1))::date "
+            "AND (e.exit_date IS NULL OR e.exit_date >= (clock_timestamp() AT TIME ZONE "
+            "(SELECT timezone FROM settings WHERE id = 1))::date) "
+            "GROUP BY d.id, d.name ORDER BY d.name"
+        )
+    )
+    return [dict(row) for row in result.mappings().all()]
+
+
+async def get_payroll_cost_by_dept(session: AsyncSession, month: date) -> list[dict[str, Any]]:
+    result = await session.execute(
+        text(
+            "SELECT d.id AS department_id, d.name AS department, "
+            "COALESCE(sum(p.gross), 0) AS gross, COALESCE(sum(p.net), 0) AS net "
+            "FROM departments AS d LEFT JOIN employees AS e ON e.department_id = d.id "
+            "LEFT JOIN (SELECT p.employee_id, p.gross, p.net FROM payslips AS p "
+            "JOIN payroll_runs AS r ON r.id = p.run_id WHERE r.month = :month) AS p "
+            "ON p.employee_id = e.id "
+            "GROUP BY d.id, d.name ORDER BY d.name"
+        ),
+        {"month": month},
+    )
+    return [dict(row) for row in result.mappings().all()]
+
+
+async def get_gender_split(session: AsyncSession) -> list[dict[str, Any]]:
+    result = await session.execute(
+        text(
+            "SELECT COALESCE(NULLIF(trim(gender), ''), 'unspecified') AS gender, "
+            "count(*)::integer AS count FROM employees "
+            "WHERE status IN ('active', 'probation') GROUP BY 1 ORDER BY 1"
+        )
+    )
+    return [dict(row) for row in result.mappings().all()]
+
+
+async def get_tenure_buckets(session: AsyncSession) -> list[dict[str, Any]]:
+    result = await session.execute(
+        text(
+            "SELECT CASE WHEN age(current_date, join_date) < interval '1 year' THEN '<1 year' "
+            "WHEN age(current_date, join_date) < interval '3 years' THEN '1-3 years' "
+            "WHEN age(current_date, join_date) < interval '5 years' THEN '3-5 years' "
+            "ELSE '5+ years' END AS tenure, count(*)::integer AS count "
+            "FROM employees WHERE status IN ('active', 'probation') "
+            "GROUP BY 1 ORDER BY min(join_date)"
+        )
+    )
+    return [dict(row) for row in result.mappings().all()]
+
+
+async def get_audit_feed(session: AsyncSession, limit: int = 10) -> list[dict[str, Any]]:
+    result = await session.execute(
+        text(
+            "SELECT a.id, a.actor_id, u.email AS actor_email, a.action, a.entity, "
+            "a.entity_id, a.created_at FROM audit_logs AS a "
+            "LEFT JOIN auth.users AS u ON u.id = a.actor_id "
+            "ORDER BY a.created_at DESC, a.id DESC LIMIT :limit"
+        ),
+        {"limit": limit},
+    )
+    return [dict(row) for row in result.mappings().all()]
+
+
+async def get_hours_this_week(session: AsyncSession, employee_id: str) -> dict[str, Any]:
+    result = await session.execute(
+        text(
+            "SELECT COALESCE(round(sum(extract(epoch FROM (a.check_out - a.check_in)) / 3600)::numeric, 2), 0) "
+            "AS hours FROM attendance AS a CROSS JOIN settings AS s "
+            "WHERE a.employee_id = CAST(:employee_id AS uuid) AND s.id = 1 "
+            "AND a.check_in IS NOT NULL AND a.check_out IS NOT NULL "
+            "AND (a.check_in AT TIME ZONE s.timezone)::date >= date_trunc('week', "
+            "(clock_timestamp() AT TIME ZONE s.timezone))::date "
+            "AND (a.check_in AT TIME ZONE s.timezone)::date <= "
+            "(clock_timestamp() AT TIME ZONE s.timezone)::date"
+        ),
+        {"employee_id": employee_id},
+    )
+    return dict(result.mappings().one())
+
+
+async def get_late_count(
+    session: AsyncSession, employee_id: str, from_: date, to: date
+) -> dict[str, int]:
+    result = await session.execute(
+        text(
+            "SELECT count(*)::integer AS late_count FROM attendance "
+            "WHERE employee_id = CAST(:employee_id AS uuid) "
+            "AND date BETWEEN :from_date AND :to_date AND status = 'late'"
+        ),
+        {"employee_id": employee_id, "from_date": from_, "to_date": to},
+    )
+    return dict(result.mappings().one())
+
+
+async def get_last_payslip(session: AsyncSession, employee_id: str) -> dict[str, Any] | None:
+    result = await session.execute(
+        text(
+            "SELECT p.*, r.month FROM payslips AS p "
+            "JOIN payroll_runs AS r ON r.id = p.run_id "
+            "WHERE p.employee_id = CAST(:employee_id AS uuid) "
+            "ORDER BY r.month DESC LIMIT 1"
+        ),
+        {"employee_id": employee_id},
+    )
+    row = result.mappings().one_or_none()
+    return dict(row) if row else None
