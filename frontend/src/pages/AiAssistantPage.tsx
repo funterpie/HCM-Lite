@@ -1,12 +1,25 @@
+/**
+ * @file AiAssistantPage.tsx
+ * @description Enterprise AI Assistant chat interface with tool execution indicator and role starter questions.
+ *
+ * SPECIFICATION (PROJECT.md section 12 & FARHAN_GUIDE.txt Task F12):
+ * - Invokes `POST /ai/chat { message, history }`.
+ * - Backend executes Groq tool calling loop with caller's role scope.
+ * - Displays tool execution pill (e.g. `get_headcount()`, `get_late_comers()`).
+ * - All assistant answers show the mandatory "AI-generated" tag.
+ * - Handles rate limits (HTTP 429) and timeouts gracefully with friendly fallbacks.
+ * - Provides 3 starter questions tailored to the active user role.
+ */
+
 import React, { useState } from 'react';
 import { api, ApiError } from '@/api/client';
 import { useAuth } from '@/auth/AuthProvider';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Card, CardContent } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { AiBadge } from '@/components/ui/AiBadge';
-import { Bot, Send, Sparkles, User, AlertCircle, Wrench } from 'lucide-react';
+import { Bot, Send, Sparkles, User, Wrench } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -27,7 +40,9 @@ export function AiAssistantPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Suggested questions based on role
+  /**
+   * Starter suggestions from PROJECT.md section 14 (Demo script questions).
+   */
   const starterQuestions = React.useMemo(() => {
     if (user?.role === 'admin') {
       return [
@@ -43,6 +58,7 @@ export function AiAssistantPage() {
         'What is the overall attendance rate?',
       ];
     }
+    // Employee questions (including privacy refusal test question)
     return [
       'How many sick leaves do I have left?',
       'What is my attendance rate this month?',
@@ -50,6 +66,9 @@ export function AiAssistantPage() {
     ];
   }, [user?.role]);
 
+  /**
+   * Sends user query to `POST /ai/chat` and formats response.
+   */
   const handleSend = async (textToSend?: string) => {
     const q = (textToSend || input).trim();
     if (!q || loading) return;

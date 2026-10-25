@@ -1,3 +1,16 @@
+/**
+ * @file Employees.tsx
+ * @description Comprehensive Employee Directory, Employee 360 dossiers, registration, and salary adjustments.
+ *
+ * SPECIFICATION (PROJECT.md section 7 & section 8 & FARHAN_GUIDE.txt Task F6):
+ * - Server-side search (`q`), department filtering, and pagination.
+ * - Register Employee form modal: creates user in Supabase with temp password, displays field-level
+ *   errors from `error.fields`.
+ * - Employee 360 view (`GET /employees/{id}`): displays profile, attendance summary, leave balances, and compensation.
+ * - Basic Salary editor (`PUT /employees/{id}/salary`, HR only), where Gross is auto-calculated as 1.5x basic.
+ * - Export directory to CSV (`GET /employees/export`).
+ */
+
 import React, { useState, useEffect } from 'react';
 import { api, ApiError } from '@/api/client';
 import { useAuth } from '@/auth/AuthProvider';
@@ -36,13 +49,13 @@ export function Employees() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
 
-  // Modals
+  // Modals state
   const [registerModal, setRegisterModal] = useState(false);
   const [view360Emp, setView360Emp] = useState<any>(null);
   const [salaryModalEmp, setSalaryModalEmp] = useState<any>(null);
   const [newSalary, setNewSalary] = useState('');
 
-  // Register Form
+  // Registration Form State
   const [formData, setFormData] = useState({
     code: '',
     email: '',
@@ -58,6 +71,9 @@ export function Employees() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  /**
+   * Loads employees with server-side query filters along with department/designation lists.
+   */
   const loadData = async () => {
     try {
       const [empRes, deptRes, desigRes] = await Promise.all([
@@ -75,6 +91,10 @@ export function Employees() {
     loadData();
   }, [searchQuery, deptFilter]);
 
+  /**
+   * Submits new employee registration form.
+   * Catches `ApiError` and populates `formErrors` with field-level server messages.
+   */
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormErrors({});
@@ -107,6 +127,9 @@ export function Employees() {
     }
   };
 
+  /**
+   * Updates basic salary for the selected employee.
+   */
   const handleUpdateSalary = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!salaryModalEmp || !newSalary) return;
@@ -122,6 +145,9 @@ export function Employees() {
     }
   };
 
+  /**
+   * Fetches the 360-degree overview for an employee.
+   */
   const handleOpen360 = async (emp: any) => {
     try {
       const res = await api.get<any>(`/employees/${emp.id}`);
@@ -131,6 +157,9 @@ export function Employees() {
     }
   };
 
+  /**
+   * Generates and downloads a CSV export of the employee directory.
+   */
   const handleExportCSV = () => {
     const csvContent =
       'data:text/csv;charset=utf-8,' +

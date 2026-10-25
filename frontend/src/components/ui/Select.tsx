@@ -1,3 +1,8 @@
+/**
+ * @file Select.tsx
+ * @description Accessible select dropdown component with custom minimal hairline border styling.
+ */
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -21,7 +26,10 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="w-full space-y-1.5">
         {label && (
-          <label htmlFor={selectId} className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <label
+            htmlFor={selectId}
+            className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          >
             {label}
             {props.required && <span className="text-danger ml-1">*</span>}
           </label>

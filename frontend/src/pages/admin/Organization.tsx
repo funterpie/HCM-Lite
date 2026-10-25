@@ -1,3 +1,14 @@
+/**
+ * @file Organization.tsx
+ * @description Organization hierarchy & master data configuration (Departments, Designations, Leave Types, Holidays).
+ *
+ * SPECIFICATION (PROJECT.md section 6 & FARHAN.md):
+ * - Departments and Designations CRUD.
+ * - Gazetted public holidays management.
+ * - Leave Types: features the mandatory "Add default leave types" button to initialize
+ *   Annual (14), Sick (8), Casual (10), and Unpaid (unlimited) without automatic seeding.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { api } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -22,6 +33,9 @@ export function Organization() {
   const [itemName, setItemName] = useState('');
   const [extraVal, setExtraVal] = useState<string | number>('');
 
+  /**
+   * Loads all organization master data tables in parallel.
+   */
   const loadAll = async () => {
     try {
       const [d, ds, lt, h] = await Promise.all([
@@ -41,6 +55,9 @@ export function Organization() {
     loadAll();
   }, []);
 
+  /**
+   * Handles creation for the currently active tab category.
+   */
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -70,6 +87,9 @@ export function Organization() {
     }
   };
 
+  /**
+   * Installs standard corporate leave types with one click (Annual 14, Sick 8, Casual 10, Unpaid).
+   */
   const handleAddDefaultLeaves = async () => {
     try {
       await api.post('/leave-types/defaults');

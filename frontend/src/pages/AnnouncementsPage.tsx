@@ -1,3 +1,12 @@
+/**
+ * @file AnnouncementsPage.tsx
+ * @description Company broadcast announcements board.
+ *
+ * SPECIFICATION (PROJECT.md section 8 & FARHAN_GUIDE.txt Task F13):
+ * - All authenticated staff can read circular notices.
+ * - Admin and HR roles can publish new notices (`POST /announcements`).
+ */
+
 import React, { useState, useEffect } from 'react';
 import { api } from '@/api/client';
 import { useAuth } from '@/auth/AuthProvider';
@@ -5,11 +14,11 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils';
-import { Megaphone, Plus, Calendar, User } from 'lucide-react';
+import { Plus, Calendar, User } from 'lucide-react';
 
 export function AnnouncementsPage() {
   const { user } = useAuth();
@@ -22,6 +31,9 @@ export function AnnouncementsPage() {
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  /**
+   * Fetches the organization announcements feed.
+   */
   const loadAnnouncements = async () => {
     try {
       const res = await api.get<any[]>('/announcements');
@@ -33,6 +45,9 @@ export function AnnouncementsPage() {
     loadAnnouncements();
   }, []);
 
+  /**
+   * Publishes new company announcement.
+   */
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -88,6 +103,7 @@ export function AnnouncementsPage() {
         ))}
       </div>
 
+      {/* Broadcast Creation Modal */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}

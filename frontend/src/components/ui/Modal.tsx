@@ -1,18 +1,30 @@
+/**
+ * @file Modal.tsx
+ * @description Accessible dialog overlay with backdrop blur and escape key listener.
+ */
+
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './Button';
 
 export interface ModalProps {
+  /** Controls modal visibility */
   isOpen: boolean;
+  /** Callback fired when user closes the modal (via escape key, close button, or backdrop) */
   onClose: () => void;
+  /** Modal header title */
   title: string;
+  /** Optional secondary subtitle */
   description?: string;
+  /** Modal body content */
   children: React.ReactNode;
+  /** Modal maximum width constraint */
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
 export function Modal({ isOpen, onClose, title, description, children, maxWidth = 'md' }: ModalProps) {
+  // Lock background scroll and listen for Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();

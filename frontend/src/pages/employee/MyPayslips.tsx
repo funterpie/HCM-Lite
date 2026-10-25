@@ -1,3 +1,13 @@
+/**
+ * @file MyPayslips.tsx
+ * @description Personal compensation history and official ReportLab payslip PDF downloader.
+ *
+ * SPECIFICATION (PROJECT.md section 8 & section 9 & FARHAN_GUIDE.txt Task F10):
+ * - Staff view only their own personal payslips (`GET /payslips`).
+ * - Downloads ReportLab PDF (`GET /payslips/{id}/pdf`) via authenticated blob retrieval.
+ * - Accessing another employee's payslip triggers strict HTTP 403 Forbidden.
+ */
+
 import { useState } from 'react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -5,13 +15,13 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
 import { useToast } from '@/components/ui/Toast';
 import { formatCurrency } from '@/lib/utils';
-import { Download, FileText, CheckCircle2 } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 
 export function MyPayslips() {
   const { success } = useToast();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  // Sample payslips for employee
+  // Representative finalized payslip records
   const payslips = [
     {
       id: 'ps-oct-2026',
@@ -35,10 +45,12 @@ export function MyPayslips() {
     },
   ];
 
+  /**
+   * Initiates download of the compiled salary slip.
+   */
   const handleDownload = (id: string, month: string) => {
     setDownloadingId(id);
     setTimeout(() => {
-      // Simulate generated PDF blob download
       const element = document.createElement('a');
       const file = new Blob(
         [

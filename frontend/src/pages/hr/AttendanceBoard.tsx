@@ -1,3 +1,13 @@
+/**
+ * @file AttendanceBoard.tsx
+ * @description Daily enterprise attendance board displaying check-in times, check-outs, and computed statuses.
+ *
+ * SPECIFICATION (PROJECT.md section 7 & section 8):
+ * - Date and department filters (`GET /attendance/board?date&department_id`).
+ * - Displays aggregate count pill badges (Present, Late, Absent).
+ * - Read-only oversight for HR and Admin.
+ */
+
 import { useState, useEffect } from 'react';
 import { api } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -7,7 +17,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { formatTime } from '@/lib/utils';
-import { Clock, CheckCircle2, AlertTriangle, UserX } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, UserX } from 'lucide-react';
 
 export function AttendanceBoard() {
   const [boardDate, setBoardDate] = useState(new Date().toISOString().split('T')[0]);
@@ -16,6 +26,9 @@ export function AttendanceBoard() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Fetches attendance board summary and records for the selected date and department.
+   */
   const loadBoard = async () => {
     try {
       setLoading(true);

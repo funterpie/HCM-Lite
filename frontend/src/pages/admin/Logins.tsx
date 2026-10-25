@@ -1,3 +1,13 @@
+/**
+ * @file Logins.tsx
+ * @description Master administrative user provisioning & credentials management screen.
+ *
+ * SPECIFICATION (PROJECT.md section 8):
+ * - Admin provisions HR accounts (`POST /users/hr`) with temporary passwords.
+ * - Admin toggles active status (`PATCH /users/{id}/active`).
+ * - Deactivated logins are denied access immediately (HTTP 403).
+ */
+
 import React, { useState } from 'react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -6,7 +16,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
-import { Plus, UserPlus, KeyRound, Shield } from 'lucide-react';
+import { UserPlus, Shield } from 'lucide-react';
 
 export function Logins() {
   const { success, error } = useToast();
@@ -20,6 +30,9 @@ export function Logins() {
     { id: 'usr-dev-1', email: 'dev@nexustech.com', role: 'employee', is_active: true },
   ]);
 
+  /**
+   * Provisions a new HR staff account with temporary password.
+   */
   const handleCreateHR = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !tempPassword) {
@@ -29,7 +42,7 @@ export function Logins() {
     const newUser = {
       id: `usr-hr-${Date.now()}`,
       email,
-      role: 'hr',
+      role: 'hr' as const,
       is_active: true,
     };
     setUsers([...users, newUser]);
@@ -39,6 +52,9 @@ export function Logins() {
     setTempPassword('');
   };
 
+  /**
+   * Toggles active state for a given user.
+   */
   const toggleActive = (id: string) => {
     setUsers(users.map((u) => (u.id === id ? { ...u, is_active: !u.is_active } : u)));
     success('User access status updated.');

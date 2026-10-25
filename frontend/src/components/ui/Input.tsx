@@ -1,9 +1,20 @@
+/**
+ * @file Input.tsx
+ * @description Accessible text input component with support for field-level error messages.
+ *
+ * SPECIFICATION (FARHAN.md):
+ * "Show server validation messages from `error.fields` next to the right inputs."
+ */
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  /** Optional field label rendered above the input */
   label?: string;
+  /** Field-level validation error message returned by the server */
   error?: string;
+  /** Supplementary helper text rendered below the input */
   helperText?: string;
 }
 
@@ -14,7 +25,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full space-y-1.5">
         {label && (
-          <label htmlFor={inputId} className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <label
+            htmlFor={inputId}
+            className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          >
             {label}
             {props.required && <span className="text-danger ml-1">*</span>}
           </label>
@@ -32,7 +46,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
           {...props}
         />
+        {/* Render field-level server error if present */}
         {error && <p className="text-xs text-danger font-medium">{error}</p>}
+        {/* Render helper text only when there is no active error */}
         {helperText && !error && <p className="text-xs text-muted-foreground">{helperText}</p>}
       </div>
     );

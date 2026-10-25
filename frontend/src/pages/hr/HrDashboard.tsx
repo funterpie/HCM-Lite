@@ -1,3 +1,13 @@
+/**
+ * @file HrDashboard.tsx
+ * @description Operational HR management dashboard visualizing daily presence and leave metrics.
+ *
+ * SPECIFICATION (PROJECT.md section 11):
+ * - KPIs: Headcount, Present today, On leave, Late today, Pending approvals.
+ * - Charts: Leave by type (Bar chart), Top frequent late-comers.
+ * - "Summarize HR Activity" button invoking `POST /ai/summarize` for automated daily reports.
+ */
+
 import { useState, useEffect } from 'react';
 import { api } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -36,6 +46,9 @@ export function HrDashboard() {
     load();
   }, []);
 
+  /**
+   * Invokes Groq AI summarization to extract operational highlights from the KPI JSON.
+   */
   const handleSummarize = async () => {
     setSummarizing(true);
     try {
@@ -73,7 +86,7 @@ export function HrDashboard() {
         }
       />
 
-      {/* AI Summary Banner */}
+      {/* AI Intelligence Briefing */}
       {aiSummary && (
         <Card className="border-purple-500/30 bg-purple-500/5">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -93,7 +106,7 @@ export function HrDashboard() {
         </Card>
       )}
 
-      {/* Operational KPIs */}
+      {/* Operational KPIs Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <StatCard
           title="Headcount"
@@ -124,6 +137,7 @@ export function HrDashboard() {
 
       {/* Visual Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Leave Utilization Breakdown */}
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Leave Utilization by Category (Days)</CardTitle>
@@ -149,6 +163,7 @@ export function HrDashboard() {
           </CardContent>
         </Card>
 
+        {/* Top Frequent Late-Comers */}
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Top Frequent Late-Comers</CardTitle>

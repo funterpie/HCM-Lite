@@ -1,14 +1,27 @@
+/**
+ * @file routes.tsx
+ * @description Master router definition and role-based route guard architecture.
+ *
+ * SPECIFICATION & SECURITY (PROJECT.md section 6 & section 8):
+ * - Guarantees users access only their assigned role routes:
+ *   * `/admin/*` requires `role === 'admin'`
+ *   * `/hr/*` requires `role === 'hr' || role === 'admin'`
+ *   * `/employee/*` available to all authenticated employees (including HR who is also an employee)
+ * - Redirects to `/setup` if the system indicates `needs_setup === true`.
+ * - Intercepts users with `must_change_password === true` and forces the `/change-password` screen.
+ */
+
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { AppShell } from '@/layouts/AppShell';
 
-// Pages
+// Authentication & First-Run Screens
 import { Login } from '@/pages/Login';
 import { Setup } from '@/pages/Setup';
 import { ChangePassword } from '@/pages/ChangePassword';
 
-// Admin Pages
+// Admin Screens
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 import { CompanySettings } from '@/pages/admin/CompanySettings';
 import { Organization } from '@/pages/admin/Organization';
@@ -16,7 +29,7 @@ import { Logins } from '@/pages/admin/Logins';
 import { AdminPayroll } from '@/pages/admin/AdminPayroll';
 import { AuditLog } from '@/pages/admin/AuditLog';
 
-// HR Pages
+// HR Screens
 import { HrDashboard } from '@/pages/hr/HrDashboard';
 import { Employees } from '@/pages/hr/Employees';
 import { AttendanceBoard } from '@/pages/hr/AttendanceBoard';
@@ -24,7 +37,7 @@ import { CorrectionsInbox } from '@/pages/hr/CorrectionsInbox';
 import { LeaveInbox } from '@/pages/hr/LeaveInbox';
 import { HrPayroll } from '@/pages/hr/HrPayroll';
 
-// Employee Pages
+// Employee Screens
 import { EmployeeDashboard } from '@/pages/employee/EmployeeDashboard';
 import { CheckIn } from '@/pages/employee/CheckIn';
 import { MyAttendance } from '@/pages/employee/MyAttendance';
@@ -32,11 +45,14 @@ import { MyLeave } from '@/pages/employee/MyLeave';
 import { MyPayslips } from '@/pages/employee/MyPayslips';
 import { MyProfile } from '@/pages/employee/MyProfile';
 
-// Shared Pages
+// Shared Screens
 import { AnnouncementsPage } from '@/pages/AnnouncementsPage';
 import { AiAssistantPage } from '@/pages/AiAssistantPage';
 
-// Protected Route Guard
+/**
+ * Route protection higher-order component.
+ * Verifies authentication, setup state, password change enforcement, and role clearance.
+ */
 function ProtectedRoute({
   children,
   allowedRoles,
@@ -46,6 +62,7 @@ function ProtectedRoute({
 }) {
   const { user, loading, needsSetup } = useAuth();
 
+  // Show minimal loading spinner while session initializes
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -54,18 +71,22 @@ function ProtectedRoute({
     );
   }
 
+  // 1. Force setup on uninitialized fresh databases
   if (needsSetup) {
     return <Navigate to="/setup" replace />;
   }
 
+  // 2. Redirect unauthenticated visitors to login
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
+  // 3. Force password change screen if temp password flag is set
   if (user.must_change_password) {
     return <Navigate to="/change-password" replace />;
   }
 
+  // 4. Enforce strict role boundary (hiding a button is not security)
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={`/${user.role}/dashboard`} replace />;
   }
@@ -92,7 +113,7 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        {/* Index Redirect to user's dashboard */}
+        {/* Index: Redirect to user's dashboard */}
         <Route
           index
           element={
@@ -104,7 +125,9 @@ export function AppRoutes() {
           }
         />
 
+        {/* ------------------------------------------------------------- */}
         {/* Admin Routes */}
+        {/* ------------------------------------------------------------- */}
         <Route
           path="admin/dashboard"
           element={
@@ -162,7 +185,9 @@ export function AppRoutes() {
           }
         />
 
+        {/* ------------------------------------------------------------- */}
         {/* HR Routes */}
+        {/* ------------------------------------------------------------- */}
         <Route
           path="hr/dashboard"
           element={
@@ -212,7 +237,9 @@ export function AppRoutes() {
           }
         />
 
-        {/* Employee Routes (Available to employee and HR) */}
+        {/* ------------------------------------------------------------- */}
+        {/* Employee Routes (Available to Employee, HR, and Admin) */}
+        {/* ------------------------------------------------------------- */}
         <Route
           path="employee/dashboard"
           element={
@@ -262,12 +289,14 @@ export function AppRoutes() {
           }
         />
 
-        {/* Shared Modules */}
+        {/* ------------------------------------------------------------- */}
+        {/* Shared Organization Modules */}
+        {/* ------------------------------------------------------------- */}
         <Route path="announcements" element={<AnnouncementsPage />} />
         <Route path="ai-assistant" element={<AiAssistantPage />} />
       </Route>
 
-      {/* Fallback */}
+      {/* Fallback wildcard route */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

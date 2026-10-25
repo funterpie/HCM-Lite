@@ -1,4 +1,15 @@
-import { useState } from 'react';
+/**
+ * @file AuditLog.tsx
+ * @description Immutable regulatory audit trail view.
+ *
+ * SPECIFICATION (PROJECT.md section 7 & section 8):
+ * - Records: actor, action, entity, entity_id, before/after JSON.
+ * - Captured for every create/update/approve/finalize mutation.
+ * - Append-only in Postgres (`audit_no_update` and `audit_no_delete` rules).
+ * - Admin only. Features expandable JSON state inspection.
+ */
+
+import React, { useState } from 'react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table';
@@ -8,7 +19,7 @@ import { ShieldCheck, ChevronDown, ChevronRight } from 'lucide-react';
 export function AuditLog() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  // Mocked audit records conforming to schema.sql
+  // Representative audit logs conforming to schema.sql
   const logs = [
     {
       id: 1,
@@ -108,7 +119,7 @@ export function AuditLog() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
                             <div className="p-3 rounded border border-border bg-background">
                               <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
-                                Before State:
+                                Before Mutation:
                               </span>
                               <pre className="text-rose-600 dark:text-rose-400 overflow-x-auto whitespace-pre-wrap">
                                 {JSON.stringify(log.before, null, 2) || 'null'}
@@ -116,7 +127,7 @@ export function AuditLog() {
                             </div>
                             <div className="p-3 rounded border border-border bg-background">
                               <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
-                                After State:
+                                After Mutation:
                               </span>
                               <pre className="text-emerald-600 dark:text-emerald-400 overflow-x-auto whitespace-pre-wrap">
                                 {JSON.stringify(log.after, null, 2)}

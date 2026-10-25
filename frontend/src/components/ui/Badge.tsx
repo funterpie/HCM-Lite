@@ -1,15 +1,23 @@
+/**
+ * @file Badge.tsx
+ * @description Status badge component supporting Postgres enum states and locked payroll indicators.
+ */
+
 import { cn } from '@/lib/utils';
 import { STATUS_CONFIG, REQ_STATUS_CONFIG, type AttendanceStatus, type RequestStatus } from '@/lib/tokens';
 
 export interface BadgeProps {
   children?: React.ReactNode;
   variant?: 'default' | 'outline' | 'status' | 'request' | 'locked';
+  /** Required when variant='status' */
   status?: AttendanceStatus;
+  /** Required when variant='request' */
   requestStatus?: RequestStatus;
   className?: string;
 }
 
 export function Badge({ children, variant = 'default', status, requestStatus, className }: BadgeProps) {
+  // Attendance status badge (present, late, half_day, absent, missing_checkout, on_leave)
   if (variant === 'status' && status && STATUS_CONFIG[status]) {
     const conf = STATUS_CONFIG[status];
     return (
@@ -28,6 +36,7 @@ export function Badge({ children, variant = 'default', status, requestStatus, cl
     );
   }
 
+  // Request status badge (pending, approved, rejected, cancelled)
   if (variant === 'request' && requestStatus && REQ_STATUS_CONFIG[requestStatus]) {
     const conf = REQ_STATUS_CONFIG[requestStatus];
     return (
@@ -45,6 +54,7 @@ export function Badge({ children, variant = 'default', status, requestStatus, cl
     );
   }
 
+  // Locked payroll indicator
   if (variant === 'locked') {
     return (
       <span

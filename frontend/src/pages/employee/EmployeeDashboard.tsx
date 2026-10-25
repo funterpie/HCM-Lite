@@ -1,3 +1,15 @@
+/**
+ * @file EmployeeDashboard.tsx
+ * @description Personal self-service workspace for employees.
+ *
+ * SPECIFICATION (PROJECT.md section 11 & FARHAN_GUIDE.txt Task F7):
+ * - Hours logged this week vs 40h standard threshold.
+ * - Late arrival count this month (monitored against 3-late penalty).
+ * - Real-time terminal status and check-in time.
+ * - Leave balance preview and shortcut to Smart Leave AI.
+ * - Direct "Ask My Assistant" shortcut.
+ */
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/client';
@@ -7,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Clock, CalendarCheck, AlertTriangle, Bot, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Clock, AlertTriangle, Bot, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export function EmployeeDashboard() {
   const navigate = useNavigate();
@@ -47,7 +59,7 @@ export function EmployeeDashboard() {
         }
       />
 
-      {/* KPI Cards */}
+      {/* Primary Employee KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           title="Hours Logged This Week"
@@ -94,7 +106,7 @@ export function EmployeeDashboard() {
           </CardContent>
         </Card>
 
-        {/* Leave Allowances */}
+        {/* Leave Allowances Summary */}
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Leave Balance Quotas</CardTitle>

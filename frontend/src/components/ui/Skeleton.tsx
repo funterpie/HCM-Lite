@@ -1,5 +1,13 @@
+/**
+ * @file Skeleton.tsx
+ * @description Animated skeleton placeholders representing loading states across the application.
+ */
+
 import { cn } from '@/lib/utils';
 
+/**
+ * Basic rectangular skeleton pulse box.
+ */
 export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
@@ -9,6 +17,9 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
   );
 }
 
+/**
+ * Composite table skeleton useful when fetching tabular data.
+ */
 export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
   return (
     <div className="w-full space-y-3">

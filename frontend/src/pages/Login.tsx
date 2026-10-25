@@ -1,3 +1,14 @@
+/**
+ * @file Login.tsx
+ * @description Authentication screen with 1-click test credential presets for quick hackathon judging.
+ *
+ * SPECIFICATION (FARHAN.md):
+ * - Signs in via Supabase Auth `signInWithPassword`.
+ * - Redirects to `/setup` if organization is not yet provisioned.
+ * - Forces `/change-password` if profile flag `must_change_password === true`.
+ * - Redirects authenticated users to their corresponding role dashboard (`/${role}/dashboard`).
+ */
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
@@ -15,6 +26,7 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Automatically route according to account setup & password change flags
   React.useEffect(() => {
     if (needsSetup) {
       navigate('/setup');
@@ -27,6 +39,9 @@ export function Login() {
     }
   }, [user, needsSetup, navigate]);
 
+  /**
+   * Handles user submission of email and password credentials.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -40,6 +55,9 @@ export function Login() {
     }
   };
 
+  /**
+   * 1-Click login helper for hackathon judges to immediately evaluate any of the 3 roles.
+   */
   const handleQuickLogin = async (role: 'admin' | 'hr' | 'employee') => {
     await switchMockRole(role);
     navigate(`/${role}/dashboard`);
@@ -48,6 +66,7 @@ export function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md space-y-6">
+        {/* Brand Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-accent-foreground font-black text-xl mb-1">
             H
@@ -56,6 +75,7 @@ export function Login() {
           <p className="text-xs text-muted-foreground">Minimal, distraction-free Human Capital Management</p>
         </div>
 
+        {/* Credentials Form */}
         <Card className="border border-border">
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -89,7 +109,7 @@ export function Login() {
               </Button>
             </form>
 
-            {/* Quick Login Presets for Hackathon Judges */}
+            {/* Quick 1-Click Role Login Presets for Hackathon Judges */}
             <div className="mt-6 pt-6 border-t border-border space-y-2">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center">
                 Demo 1-Click Role Login

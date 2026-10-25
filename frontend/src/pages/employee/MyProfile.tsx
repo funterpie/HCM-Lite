@@ -1,3 +1,12 @@
+/**
+ * @file MyProfile.tsx
+ * @description Personal contact profile editor for employees.
+ *
+ * SPECIFICATION (PROJECT.md section 8 & FARHAN_GUIDE.txt Task F13):
+ * - Staff can self-manage contact details (phone, residential address) via `PATCH /me/profile`.
+ * - Department, designation, and compensation are read-only and require HR authorization.
+ */
+
 import React, { useState } from 'react';
 import { api } from '@/api/client';
 import { useAuth } from '@/auth/AuthProvider';
@@ -6,7 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
-import { Save, User, ShieldCheck } from 'lucide-react';
+import { Save, User } from 'lucide-react';
 
 export function MyProfile() {
   const { user } = useAuth();
@@ -16,6 +25,9 @@ export function MyProfile() {
   const [address, setAddress] = useState('Gulshan-e-Iqbal, Block 4, Karachi');
   const [saving, setSaving] = useState(false);
 
+  /**
+   * Persists phone and address updates to `PATCH /me/profile`.
+   */
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -37,6 +49,7 @@ export function MyProfile() {
       />
 
       <form onSubmit={handleSave} className="space-y-6">
+        {/* Account Identifier Card */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -61,6 +74,7 @@ export function MyProfile() {
           </CardContent>
         </Card>
 
+        {/* Editable Contact Fields */}
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Editable Contact Details</CardTitle>

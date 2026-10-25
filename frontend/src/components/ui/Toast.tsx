@@ -1,3 +1,8 @@
+/**
+ * @file Toast.tsx
+ * @description Global notification toast system with animated auto-dismissing alerts.
+ */
+
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,11 +30,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const toast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => removeToast(id), 4000);
-  }, [removeToast]);
+  const toast = useCallback(
+    (message: string, type: ToastType = 'info') => {
+      const id = Math.random().toString(36).substring(2, 9);
+      setToasts((prev) => [...prev, { id, type, message }]);
+      setTimeout(() => removeToast(id), 4000);
+    },
+    [removeToast]
+  );
 
   const success = useCallback((message: string) => toast(message, 'success'), [toast]);
   const error = useCallback((message: string) => toast(message, 'error'), [toast]);
@@ -68,7 +76,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useToast() {
+export function useToast(): ToastContextType {
   const context = useContext(ToastContext);
   if (!context) {
     throw new Error('useToast must be used within a ToastProvider');

@@ -1,3 +1,13 @@
+/**
+ * @file AdminPayroll.tsx
+ * @description Executive payroll authorization & finalization screen.
+ *
+ * SPECIFICATION (PROJECT.md section 7 & section 8):
+ * - HR creates/reviews a draft run. ONLY Admin finalizes (`POST /payroll/runs/{id}/finalize`).
+ * - Finalized runs are locked permanently via database trigger `lock_finalized_run()` and backend checks.
+ * - Displays a visible "Locked" badge and disables recomputations once finalized.
+ */
+
 import { useState, useEffect } from 'react';
 import { api } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -17,6 +27,9 @@ export function AdminPayroll() {
   const [finalizeModal, setFinalizeModal] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
 
+  /**
+   * Loads payroll runs and defaults to the most recent run.
+   */
   const loadRuns = async () => {
     try {
       const res = await api.get<any[]>('/payroll/runs');
@@ -36,6 +49,9 @@ export function AdminPayroll() {
     loadRuns();
   }, []);
 
+  /**
+   * Finalizes the current active payroll run and locks records.
+   */
   const handleFinalize = async () => {
     if (!activeRun) return;
     setFinalizing(true);
@@ -80,7 +96,7 @@ export function AdminPayroll() {
         }
       />
 
-      {/* Month Selector */}
+      {/* Month Selector Tabs */}
       <div className="flex gap-2">
         {runs.map((r) => (
           <button

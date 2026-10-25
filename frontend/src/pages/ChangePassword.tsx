@@ -1,3 +1,12 @@
+/**
+ * @file ChangePassword.tsx
+ * @description Forced password change screen for newly onboarded staff with temporary passwords.
+ *
+ * SPECIFICATION (PROJECT.md section 6):
+ * - When HR registers an employee, `must_change_password` is set to `true`.
+ * - The frontend blocks all other routes until `POST /auth/change-password` succeeds and flips the flag.
+ */
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/client';
@@ -16,6 +25,9 @@ export function ChangePassword() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  /**
+   * Submits the new permanent password to the backend.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -50,7 +62,7 @@ export function ChangePassword() {
           </div>
           <h1 className="text-xl font-bold tracking-tight text-foreground">Password Update Required</h1>
           <p className="text-xs text-muted-foreground">
-            You are logged in with a temporary credentials. Please set a new permanent password.
+            You are logged in with temporary credentials. Please set a new permanent password.
           </p>
         </div>
 

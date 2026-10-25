@@ -1,13 +1,23 @@
+/**
+ * @file EmptyState.tsx
+ * @description Standardized empty state component displayed when lists, tables, or queries return zero records.
+ */
+
 import React from 'react';
 import { Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './Button';
 
 export interface EmptyStateProps {
+  /** Primary title explaining that no records exist */
   title: string;
+  /** Explanatory description */
   description?: string;
+  /** Custom icon override */
   icon?: React.ReactNode;
+  /** Action button text (e.g., "Add Department") */
   actionLabel?: string;
+  /** Callback fired when user clicks the action button */
   onAction?: () => void;
   className?: string;
 }

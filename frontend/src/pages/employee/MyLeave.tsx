@@ -1,3 +1,17 @@
+/**
+ * @file MyLeave.tsx
+ * @description Leave management, balance monitoring, and AI-assisted application ("Smart Leave").
+ *
+ * SPECIFICATION (PROJECT.md section 7 & section 12 & FARHAN_GUIDE.txt Task F8):
+ * - Displays computed balance cards (`quota - approved_days`).
+ * - History table with cancellation for pending requests.
+ * - Application form: skips weekends and holidays automatically.
+ * - Displays HTTP 422 error codes clearly (`overlap` and `insufficient_balance`).
+ * - "Smart Leave" AI box: user types natural language (e.g. "need next Monday and Tuesday off for my sister's wedding").
+ *   Invokes `POST /ai/smart-leave`, pre-fills form with validated JSON, labels with "AI-generated",
+ *   and strictly requires human confirmation before saving.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { api, ApiError } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -11,7 +25,7 @@ import { Badge } from '@/components/ui/Badge';
 import { AiBadge } from '@/components/ui/AiBadge';
 import { useToast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils';
-import { Sparkles, Calendar, Send, AlertCircle, XCircle } from 'lucide-react';
+import { Sparkles, Send, AlertCircle } from 'lucide-react';
 
 export function MyLeave() {
   const { success, error } = useToast();
@@ -33,6 +47,9 @@ export function MyLeave() {
   const [applying, setApplying] = useState(false);
   const [formError, setFormError] = useState('');
 
+  /**
+   * Loads personal leave quotas, categories, and previous submission records.
+   */
   const loadData = async () => {
     try {
       const [b, lt, h] = await Promise.all([
@@ -53,7 +70,10 @@ export function MyLeave() {
     loadData();
   }, []);
 
-  // AI Smart Leave Handler
+  /**
+   * Smart Leave AI Handler.
+   * Sends user's natural language sentence to the backend and pre-fills the form with interpreted fields.
+   */
   const handleSmartLeave = async () => {
     if (!smartPrompt.trim()) return;
     setSmartLoading(true);
@@ -75,7 +95,10 @@ export function MyLeave() {
     }
   };
 
-  // Submit Leave Application
+  /**
+   * Submits verified leave application.
+   * Handles 422 overlap and insufficient_balance responses with clear user feedback.
+   */
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -116,7 +139,7 @@ export function MyLeave() {
         description="View remaining annual quotas, request working-day leaves, or use AI Smart Leave."
       />
 
-      {/* Balance Cards */}
+      {/* Balance Quota Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {balances.map((b) => (
           <Card key={b.leave_type_id} className="p-4">
@@ -141,7 +164,7 @@ export function MyLeave() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Application & Smart Leave Column */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Smart Leave Box */}
+          {/* Smart Leave AI Input Card */}
           <Card className="border-purple-500/30 bg-purple-500/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="flex items-center gap-2">
@@ -235,7 +258,7 @@ export function MyLeave() {
           </Card>
         </div>
 
-        {/* History Column */}
+        {/* History Records Column */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>

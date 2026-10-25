@@ -1,3 +1,14 @@
+/**
+ * @file AdminDashboard.tsx
+ * @description Executive management dashboard visualizing high-level organizational analytics.
+ *
+ * SPECIFICATION (PROJECT.md section 11):
+ * - Headcount, Attrition YTD, Monthly payroll cost, Average salary.
+ * - Recharts visualizations: Attendance trend (past 5 days) & Absenteeism by department.
+ * - Top frequent late arrivals table.
+ * - "Summarize with AI" button executing `POST /ai/summarize` and displaying 3-5 bullets.
+ */
+
 import { useState, useEffect } from 'react';
 import { api } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -39,6 +50,9 @@ export function AdminDashboard() {
     loadDashboard();
   }, []);
 
+  /**
+   * Generates a verified executive briefing using the backend Groq AI summarize endpoint.
+   */
   const handleSummarize = async () => {
     setSummarizing(true);
     try {
@@ -86,7 +100,7 @@ export function AdminDashboard() {
         }
       />
 
-      {/* AI Summary Banner */}
+      {/* AI Summary Briefing Box */}
       {aiSummary && (
         <Card className="border-purple-500/30 bg-purple-500/5 transition-all">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -134,7 +148,7 @@ export function AdminDashboard() {
         />
       </div>
 
-      {/* Charts Section */}
+      {/* Visual Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Attendance Trend Line */}
         <Card>

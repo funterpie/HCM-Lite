@@ -1,3 +1,9 @@
+/**
+ * @file NotificationsBell.tsx
+ * @description Header bell icon displaying live unread notifications count, dropdown list,
+ * and mark-as-read interaction via `PATCH /notifications/{id}/read`.
+ */
+
 import { useState, useEffect } from 'react';
 import { Bell, Check } from 'lucide-react';
 import { api } from '@/api/client';
@@ -15,6 +21,9 @@ export function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
+  /**
+   * Fetches the user's personal notifications list.
+   */
   const fetchNotifs = async () => {
     try {
       const res = await api.get<NotificationItem[]>('/notifications');
@@ -28,6 +37,9 @@ export function NotificationsBell() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  /**
+   * Marks a notification as read and updates local state.
+   */
   const markAsRead = async (id: string) => {
     try {
       await api.patch(`/notifications/${id}/read`);

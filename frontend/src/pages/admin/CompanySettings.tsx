@@ -1,3 +1,15 @@
+/**
+ * @file CompanySettings.tsx
+ * @description Company configuration and business rules management screen.
+ *
+ * SPECIFICATION (PROJECT.md section 7):
+ * - Company name & timezone (default 'Asia/Karachi').
+ * - Office start (09:00), grace period (15 min), half day threshold (under 5h).
+ * - Office latitude, longitude, and geofencing radius (150m).
+ * - Late arrival penalty toggle (3 lates = 0.5 day deduction).
+ * - Admin has PUT access; settings apply strictly to new records.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { api } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -37,6 +49,9 @@ export function CompanySettings() {
     load();
   }, []);
 
+  /**
+   * Persists company policy updates to `PUT /settings`.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -112,7 +127,7 @@ export function CompanySettings() {
                 required
                 value={settings.grace_minutes}
                 onChange={(e) => setSettings({ ...settings, grace_minutes: Number(e.target.value) })}
-                helperText="Late mark starts strictly at start + grace."
+                helperText="Late mark starts strictly at start + grace (09:16)."
               />
               <Input
                 label="Half-Day Threshold (Hours)"

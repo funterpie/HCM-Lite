@@ -1,6 +1,14 @@
+/**
+ * @file Card.tsx
+ * @description Card surface primitives conforming to the hairline-border, no-gradient aesthetic.
+ */
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 
+/**
+ * Main Card surface container.
+ */
 export function Card({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
@@ -15,6 +23,9 @@ export function Card({ className, children, ...props }: React.HTMLAttributes<HTM
   );
 }
 
+/**
+ * Top header within a Card.
+ */
 export function CardHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn('flex flex-col space-y-1.5 pb-4 border-b border-border/50 mb-4', className)} {...props}>
@@ -23,6 +34,9 @@ export function CardHeader({ className, children, ...props }: React.HTMLAttribut
   );
 }
 
+/**
+ * Primary title heading within a CardHeader.
+ */
 export function CardTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3 className={cn('text-base font-semibold leading-none tracking-tight text-foreground', className)} {...props}>
@@ -31,6 +45,9 @@ export function CardTitle({ className, children, ...props }: React.HTMLAttribute
   );
 }
 
+/**
+ * Subtitle description within a CardHeader.
+ */
 export function CardDescription({ className, children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p className={cn('text-xs text-muted-foreground mt-1', className)} {...props}>
@@ -39,6 +56,9 @@ export function CardDescription({ className, children, ...props }: React.HTMLAtt
   );
 }
 
+/**
+ * Main inner body of a Card.
+ */
 export function CardContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn('', className)} {...props}>

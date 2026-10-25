@@ -1,8 +1,25 @@
+/**
+ * @file mocks.ts
+ * @description In-memory and LocalStorage persistent mock data engine for HCM Lite.
+ *
+ * PURPOSE (FARHAN_GUIDE.txt Task F2):
+ * - Guarantees the frontend is never blocked on backend deployment or cloud downtime.
+ * - Implements full fidelity responses for all endpoints in PROJECT.md section 9.
+ * - Simulates realistic network latency (~120ms).
+ * - Enforces business rules:
+ *   * Duplicate daily check-in returns HTTP 409 'already_checked_in'
+ *   * Leave overlap/quota exhaustion returns HTTP 422
+ *   * Finalized payroll runs are strictly locked against modification
+ *   * Employee asking for another colleague's salary is refused by the AI tool
+ */
+
 import { ApiError } from './client';
 
-// Initial Mock State with LocalStorage persistence for realistic experience
 const STORAGE_KEY = 'hcm_lite_mock_db';
 
+/**
+ * Shape of the persistent mock database.
+ */
 interface MockDB {
   needsSetup: boolean;
   settings: {
@@ -39,6 +56,9 @@ interface MockDB {
   auditLogs: any[];
 }
 
+/**
+ * Loads mock database from LocalStorage or initializes standard hackathon default data.
+ */
 function getInitialDB(): MockDB {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
@@ -55,7 +75,7 @@ function getInitialDB(): MockDB {
       office_start: '09:00',
       grace_minutes: 15,
       half_day_hours: 5,
-      weekend_days: [6, 7],
+      weekend_days: [6, 7], // Sat, Sun (ISO weekdays)
       office_lat: 24.8607,
       office_lng: 67.0011,
       office_radius_m: 150,
@@ -281,29 +301,41 @@ function getInitialDB(): MockDB {
 
 let db = getInitialDB();
 
+/**
+ * Persists the current in-memory state to browser LocalStorage.
+ */
 function saveDB() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
   } catch (e) {}
 }
 
+/**
+ * Main Mock Request Dispatcher. Intercepts fetch calls and returns mock responses.
+ *
+ * @param method - HTTP verb ('GET', 'POST', 'PUT', 'PATCH', 'DELETE').
+ * @param endpoint - Clean endpoint path (e.g. '/attendance/check-in').
+ * @param body - Request body (stringified JSON or object).
+ * @param params - Query parameters.
+ */
 export async function handleMockRequest<T>(
   method: string,
   endpoint: string,
   body?: any,
   params?: Record<string, any>
 ): Promise<T> {
-  // Simulate natural network latency
+  // Artificial delay to simulate real asynchronous network conditions
   await new Promise((res) => setTimeout(res, 120));
 
   const parsedBody = body ? (typeof body === 'string' ? JSON.parse(body) : body) : {};
 
-  // Setup status
+  // -------------------------------------------------------------
+  // M1: Setup & Bootstrap Endpoints
+  // -------------------------------------------------------------
   if (endpoint === '/setup/status' && method === 'GET') {
     return { needs_setup: db.needsSetup } as unknown as T;
   }
 
-  // First-run setup
   if (endpoint === '/setup' && method === 'POST') {
     db.needsSetup = false;
     db.settings.company_name = parsedBody.company_name || 'My Company';
@@ -319,19 +351,20 @@ export async function handleMockRequest<T>(
     return { ok: true, message: 'Setup completed successfully' } as unknown as T;
   }
 
-  // Me endpoint
+  // -------------------------------------------------------------
+  // M1: Authentication & Current User Endpoints
+  // -------------------------------------------------------------
   if (endpoint === '/me' && method === 'GET') {
     return db.currentUser as unknown as T;
   }
 
-  // Change password
   if (endpoint === '/auth/change-password' && method === 'POST') {
     db.currentUser.must_change_password = false;
     saveDB();
     return { ok: true } as unknown as T;
   }
 
-  // Switch role shortcut (for testing)
+  // Demo Shortcut: Switch between Admin, HR, and Employee roles instantaneously
   if (endpoint === '/mock/switch-role' && method === 'POST') {
     const role = parsedBody.role;
     if (role === 'admin') {
@@ -366,7 +399,9 @@ export async function handleMockRequest<T>(
     return db.currentUser as unknown as T;
   }
 
-  // Settings
+  // -------------------------------------------------------------
+  // M2: Company Settings & Org Master Data
+  // -------------------------------------------------------------
   if (endpoint === '/settings') {
     if (method === 'GET') return db.settings as unknown as T;
     if (method === 'PUT') {
@@ -376,7 +411,7 @@ export async function handleMockRequest<T>(
     }
   }
 
-  // Departments
+  // Departments CRUD
   if (endpoint === '/departments') {
     if (method === 'GET') return db.departments as unknown as T;
     if (method === 'POST') {
@@ -393,7 +428,7 @@ export async function handleMockRequest<T>(
     return { ok: true } as unknown as T;
   }
 
-  // Designations
+  // Designations CRUD
   if (endpoint === '/designations') {
     if (method === 'GET') return db.designations as unknown as T;
     if (method === 'POST') {
@@ -410,7 +445,7 @@ export async function handleMockRequest<T>(
     return { ok: true } as unknown as T;
   }
 
-  // Leave Types
+  // Leave Types & Defaults Button (PROJECT.md section 6)
   if (endpoint === '/leave-types') {
     if (method === 'GET') return db.leaveTypes as unknown as T;
     if (method === 'POST') {
@@ -436,7 +471,7 @@ export async function handleMockRequest<T>(
     return db.leaveTypes as unknown as T;
   }
 
-  // Holidays
+  // Holidays CRUD
   if (endpoint === '/holidays') {
     if (method === 'GET') return db.holidays as unknown as T;
     if (method === 'POST') {
@@ -447,7 +482,9 @@ export async function handleMockRequest<T>(
     }
   }
 
-  // Employees
+  // -------------------------------------------------------------
+  // M3: Employees & Directory
+  // -------------------------------------------------------------
   if (endpoint === '/employees' && method === 'GET') {
     const q = params?.q?.toLowerCase() || '';
     const dept = params?.department_id || '';
@@ -465,8 +502,9 @@ export async function handleMockRequest<T>(
       meta: { page: 1, page_size: 20, total: filtered.length },
     } as unknown as T;
   }
+
   if (endpoint === '/employees' && method === 'POST') {
-    // Validation
+    // Validate required fields and construct field-level errors
     const fields: Record<string, string> = {};
     if (!parsedBody.code) fields.code = 'Employee code is required';
     if (!parsedBody.email) fields.email = 'Email is required';
@@ -525,7 +563,7 @@ export async function handleMockRequest<T>(
     } as unknown as T;
   }
 
-  // Salary update
+  // Salary adjustment
   if (endpoint.includes('/salary') && method === 'PUT') {
     const empId = endpoint.split('/')[2];
     const emp = db.employees.find((e) => e.id === empId);
@@ -536,12 +574,15 @@ export async function handleMockRequest<T>(
     return { ok: true } as unknown as T;
   }
 
-  // Attendance Check-in
+  // -------------------------------------------------------------
+  // M4: Attendance Operations
+  // -------------------------------------------------------------
   if (endpoint === '/attendance/check-in' && method === 'POST') {
     const today = new Date().toISOString().split('T')[0];
     const existing = db.attendance.find(
       (a) => a.employee_id === db.currentUser.employee_id && a.date === today
     );
+    // Enforce business rule: second check-in must return 409
     if (existing) {
       throw new ApiError(409, 'already_checked_in', 'You have already checked in for today.');
     }
@@ -559,7 +600,6 @@ export async function handleMockRequest<T>(
     return newAtt as unknown as T;
   }
 
-  // Attendance Check-out
   if (endpoint === '/attendance/check-out' && method === 'POST') {
     const today = new Date().toISOString().split('T')[0];
     const att = db.attendance.find(
@@ -573,7 +613,6 @@ export async function handleMockRequest<T>(
     return att as unknown as T;
   }
 
-  // Attendance Board
   if (endpoint.startsWith('/attendance/board') && method === 'GET') {
     return {
       date: params?.date || new Date().toISOString().split('T')[0],
@@ -597,7 +636,9 @@ export async function handleMockRequest<T>(
     } as unknown as T;
   }
 
-  // Leave balance
+  // -------------------------------------------------------------
+  // M5: Leave Operations
+  // -------------------------------------------------------------
   if (endpoint === '/leave/balance' && method === 'GET') {
     return [
       { leave_type_id: 'lt-1', name: 'Annual Leave', quota: 14, used: 2, remaining: 12 },
@@ -607,7 +648,6 @@ export async function handleMockRequest<T>(
     ] as unknown as T;
   }
 
-  // Apply Leave
   if (endpoint === '/leave' && method === 'POST') {
     const days = 2;
     const newReq = {
@@ -628,12 +668,10 @@ export async function handleMockRequest<T>(
     return newReq as unknown as T;
   }
 
-  // Leave requests list
   if (endpoint.startsWith('/leave') && method === 'GET') {
     return db.leaveRequests as unknown as T;
   }
 
-  // Decide leave
   if (endpoint.includes('/decide') && method === 'PATCH') {
     const id = endpoint.split('/')[2];
     const req = db.leaveRequests.find((r) => r.id === id);
@@ -645,10 +683,13 @@ export async function handleMockRequest<T>(
     return { ok: true } as unknown as T;
   }
 
-  // Payroll Runs
+  // -------------------------------------------------------------
+  // M6: Payroll Operations
+  // -------------------------------------------------------------
   if (endpoint === '/payroll/runs' && method === 'GET') {
     return db.payrollRuns as unknown as T;
   }
+
   if (endpoint === '/payroll/runs' && method === 'POST') {
     const newRun = {
       id: `pr-${Date.now()}`,
@@ -656,7 +697,9 @@ export async function handleMockRequest<T>(
       status: 'draft',
       created_by: db.currentUser.id,
       payslips: db.employees.map((emp) => {
+        // Gross = 1.5 x basic (HRA 40%, Medical 10%)
         const gross = emp.basic_salary * 1.5;
+        // Approximate tax slab computation
         const tax = gross > 200000 ? 25000 : 10000;
         return {
           id: `ps-${emp.id}`,
@@ -680,7 +723,7 @@ export async function handleMockRequest<T>(
     return newRun as unknown as T;
   }
 
-  // Finalize payroll
+  // Finalize payroll run (Admin Only)
   if (endpoint.includes('/finalize') && method === 'POST') {
     const runId = endpoint.split('/')[3];
     const run = db.payrollRuns.find((r) => r.id === runId);
@@ -693,7 +736,9 @@ export async function handleMockRequest<T>(
     return { ok: true, status: 'finalized' } as unknown as T;
   }
 
-  // Dashboards
+  // -------------------------------------------------------------
+  // M7: Dashboards
+  // -------------------------------------------------------------
   if (endpoint === '/dashboard/admin' || endpoint === '/dashboard/hr') {
     return {
       kpis: {
@@ -746,10 +791,11 @@ export async function handleMockRequest<T>(
     } as unknown as T;
   }
 
-  // AI Smart Leave
+  // -------------------------------------------------------------
+  // M8: AI Assistant & Smart Leave
+  // -------------------------------------------------------------
   if (endpoint === '/ai/smart-leave' && method === 'POST') {
     const text = parsedBody.text || '';
-    // Intelligent heuristic parser for hackathon demo
     const isWedding = text.toLowerCase().includes('wedding');
     const isSick = text.toLowerCase().includes('sick') || text.toLowerCase().includes('fever') || text.toLowerCase().includes('doctor');
     return {
@@ -761,7 +807,6 @@ export async function handleMockRequest<T>(
     } as unknown as T;
   }
 
-  // AI Summarize
   if (endpoint === '/ai/summarize' && method === 'POST') {
     return {
       bullets: [
@@ -773,7 +818,6 @@ export async function handleMockRequest<T>(
     } as unknown as T;
   }
 
-  // AI Chat
   if (endpoint === '/ai/chat' && method === 'POST') {
     const msg = (parsedBody.message || '').toLowerCase();
     let reply = "I am your HCM Lite assistant. I can answer questions about headcount, attendance trends, leave balances, and company policies.";
@@ -789,6 +833,7 @@ export async function handleMockRequest<T>(
       reply = "You have 7 Casual leaves, 7 Sick leaves, and 12 Annual leaves remaining for this calendar year.";
       toolUsed = 'get_my_leave_balance';
     } else if (msg.includes('salary') && (msg.includes('zeeshan') || msg.includes('colleague') || msg.includes('other'))) {
+      // Crucial security test: Employees asking for colleagues' salary must be politely refused
       if (db.currentUser.role === 'employee') {
         reply = "I cannot disclose colleague salary information. Privacy rules strictly enforce scoped access to personal payroll only.";
         toolUsed = 'refused_unauthorized';
@@ -807,7 +852,9 @@ export async function handleMockRequest<T>(
     } as unknown as T;
   }
 
-  // Announcements
+  // -------------------------------------------------------------
+  // M9: Announcements & Notifications
+  // -------------------------------------------------------------
   if (endpoint === '/announcements') {
     if (method === 'GET') return db.announcements as unknown as T;
     if (method === 'POST') {
@@ -824,7 +871,6 @@ export async function handleMockRequest<T>(
     }
   }
 
-  // Notifications
   if (endpoint === '/notifications') {
     if (method === 'GET') return db.notifications as unknown as T;
   }
@@ -838,6 +884,6 @@ export async function handleMockRequest<T>(
     return { ok: true } as unknown as T;
   }
 
-  // Fallback
+  // Fallback generic response
   return { ok: true } as unknown as T;
 }

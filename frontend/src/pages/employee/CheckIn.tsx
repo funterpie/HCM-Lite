@@ -1,3 +1,14 @@
+/**
+ * @file CheckIn.tsx
+ * @description Biometric & geofenced time terminal for staff check-in and check-out.
+ *
+ * SPECIFICATION (PROJECT.md section 7 & section 9 & FARHAN_GUIDE.txt Task F7):
+ * - Authoritative server timestamps (client time is never trusted for record creation).
+ * - Single daily record per employee: second check-in returns HTTP 409 `already_checked_in`.
+ * - The terminal presents a friendly user message upon duplicate attempts.
+ * - Enforces half-day rules (< 5h worked) and late marks (> 09:15) computed dynamically on the server.
+ */
+
 import { useState, useEffect } from 'react';
 import { api, ApiError } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -6,7 +17,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
 import { formatTime, formatDate } from '@/lib/utils';
-import { Clock, CheckCircle2, LogIn, LogOut, AlertCircle, MapPin } from 'lucide-react';
+import { CheckCircle2, LogIn, LogOut, AlertCircle, MapPin } from 'lucide-react';
 
 export function CheckIn() {
   const { success, error } = useToast();
@@ -15,12 +26,15 @@ export function CheckIn() {
   const [todayRecord, setTodayRecord] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Clock ticker
+  // Digital clock second interval
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  /**
+   * Fetches today's attendance record for the current user.
+   */
   const fetchTodayStatus = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -35,6 +49,9 @@ export function CheckIn() {
     fetchTodayStatus();
   }, []);
 
+  /**
+   * Stamps entry time (`POST /attendance/check-in`). Handles 409 already_checked_in cleanly.
+   */
   const handleCheckIn = async () => {
     setLoading(true);
     setErrorMessage('');
@@ -53,6 +70,9 @@ export function CheckIn() {
     }
   };
 
+  /**
+   * Stamps departure time (`POST /attendance/check-out`).
+   */
   const handleCheckOut = async () => {
     setLoading(true);
     setErrorMessage('');
@@ -89,7 +109,7 @@ export function CheckIn() {
             </div>
           </div>
 
-          {/* Today's Status Badge */}
+          {/* Today's Status Indicator */}
           <div className="flex items-center justify-center gap-2">
             <span className="text-xs text-muted-foreground">Today's Status:</span>
             {todayRecord ? (
@@ -99,7 +119,7 @@ export function CheckIn() {
             )}
           </div>
 
-          {/* Friendly Error Banner for 409 */}
+          {/* Friendly Duplicate Check-In 409 Notice */}
           {errorMessage && (
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-700 font-medium flex items-center justify-center gap-2">
               <AlertCircle className="h-4 w-4" />
@@ -107,7 +127,7 @@ export function CheckIn() {
             </div>
           )}
 
-          {/* Big Action Check-in Button */}
+          {/* Action Check-in/Check-out Button */}
           <div className="pt-4 flex flex-col items-center gap-4">
             {!hasCheckedIn ? (
               <Button
@@ -138,7 +158,7 @@ export function CheckIn() {
             )}
           </div>
 
-          {/* Timestamp Details */}
+          {/* Biometric Timestamp Details */}
           <div className="pt-6 border-t border-border grid grid-cols-2 gap-4 text-xs">
             <div className="p-3 bg-surface rounded border border-border">
               <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Check In</span>

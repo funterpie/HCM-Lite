@@ -1,12 +1,22 @@
+/**
+ * @file StatCard.tsx
+ * @description KPI metric summary card used across Executive, HR, and Employee dashboards.
+ */
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Card } from './Card';
 
 export interface StatCardProps {
+  /** Metric name or uppercase label */
   title: string;
+  /** Primary metric value */
   value: string | number;
+  /** Supplementary context text */
   subtext?: string;
+  /** Leading or trailing icon */
   icon?: React.ReactNode;
+  /** Trend percentage indicator */
   trend?: {
     value: string;
     positive?: boolean;

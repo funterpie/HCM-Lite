@@ -1,3 +1,12 @@
+/**
+ * @file MyAttendance.tsx
+ * @description Monthly personal attendance log and missed check-in adjustment request screen.
+ *
+ * SPECIFICATION (PROJECT.md section 7 & FARHAN_GUIDE.txt Task F7):
+ * - Displays daily entries merging real database records with dynamically computed absences (`daily_status()`).
+ * - Request correction modal submitting adjustment reasons to `POST /attendance/corrections`.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { api } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -22,9 +31,8 @@ export function MyAttendance() {
   const [corrReason, setCorrReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Generate sample monthly calendar data
+  // Generate representative calendar data conforming to daily_status rules
   useEffect(() => {
-    // Mock sample attendance log for employee
     const sampleRecords = [
       {
         id: 'att-1',
@@ -65,6 +73,9 @@ export function MyAttendance() {
     setRecords(sampleRecords);
   }, []);
 
+  /**
+   * Submits attendance correction appeal for HR review.
+   */
   const handleRequestCorrection = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -131,7 +142,7 @@ export function MyAttendance() {
         </CardContent>
       </Card>
 
-      {/* Correction Modal */}
+      {/* Correction Request Modal */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}

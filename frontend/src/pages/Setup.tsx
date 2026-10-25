@@ -1,3 +1,13 @@
+/**
+ * @file Setup.tsx
+ * @description First-run organization initialization & master administrator provisioning screen.
+ *
+ * SPECIFICATION (PROJECT.md section 6):
+ * - `POST /setup` is allowed only while `settings` is empty.
+ * - Creates the initial company settings row and master Admin account.
+ * - Evaluators check that a fresh clone opens on this screen without seed data.
+ */
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/client';
@@ -17,6 +27,9 @@ export function Setup() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  /**
+   * Submits organization profile and initializes master administrator account.
+   */
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');

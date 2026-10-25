@@ -1,3 +1,17 @@
+/**
+ * @file HrPayroll.tsx
+ * @description Monthly payroll draft compilation and compensation recalculation view for HR.
+ *
+ * SPECIFICATION (PROJECT.md section 7 & section 8):
+ * - HR selects month and triggers draft run (`POST /payroll/runs`).
+ * - Applies mathematical formulas:
+ *   * Gross = 1.5 x basic (HRA 40%, Medical 10%).
+ *   * Per day = gross / working days in month.
+ *   * Deductions = per_day x (absent days + unpaid days + 0.5 x half days).
+ *   * Progressive tax slab computation.
+ * - Recalculate button is disabled once Admin finalizes the cycle.
+ */
+
 import { useState, useEffect } from 'react';
 import { api } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -8,7 +22,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Badge } from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
 import { formatCurrency } from '@/lib/utils';
-import { Play, RotateCw, Lock, DollarSign } from 'lucide-react';
+import { Play, RotateCw, Lock } from 'lucide-react';
 
 export function HrPayroll() {
   const { success, error } = useToast();
@@ -17,6 +31,9 @@ export function HrPayroll() {
   const [activeRun, setActiveRun] = useState<any>(null);
   const [computing, setComputing] = useState(false);
 
+  /**
+   * Loads payroll runs and selects the most recent cycle.
+   */
   const loadRuns = async () => {
     try {
       const res = await api.get<any[]>('/payroll/runs');
@@ -31,6 +48,9 @@ export function HrPayroll() {
     loadRuns();
   }, []);
 
+  /**
+   * Triggers the backend service to calculate/recalculate the payroll draft for the selected month.
+   */
   const handleComputeRun = async () => {
     setComputing(true);
     try {
@@ -73,6 +93,7 @@ export function HrPayroll() {
         }
       />
 
+      {/* Locked Payroll Alert */}
       {isFinalized && (
         <div className="p-4 rounded-lg bg-zinc-900 text-zinc-100 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs">
@@ -83,6 +104,7 @@ export function HrPayroll() {
         </div>
       )}
 
+      {/* Active Run Statement Table */}
       {activeRun ? (
         <Card>
           <CardHeader>

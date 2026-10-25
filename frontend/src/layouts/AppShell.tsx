@@ -1,3 +1,16 @@
+/**
+ * @file AppShell.tsx
+ * @description Master responsive application layout for HCM Lite.
+ *
+ * SPECIFICATION (FARHAN.md & FARHAN_GUIDE.txt Task F4):
+ * - Renders dynamic role menus strictly filtered for:
+ *   * Admin: Dashboard, Setup, Org, Logins, Employees, Payroll Finalize, Announcements, Audit Log, AI Assistant
+ *   * HR: Dashboard, Employees, Attendance Board, Corrections, Leave Inbox, Payroll Draft, Check-in, Leave, AI Assistant
+ *   * Employee: Dashboard, Check-in, Attendance, Leave, Payslips, Profile, Announcements, AI Assistant
+ * - Fully responsive: transforms sidebar into mobile overlay drawer on screens >= 375px.
+ * - Features a Quick Role Preview switcher allowing judges to toggle roles with zero friction.
+ */
+
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
@@ -32,7 +45,9 @@ export function AppShell() {
     navigate('/login');
   };
 
-  // Build role-specific navigation menus
+  /**
+   * Generates navigation menu items based strictly on current user role.
+   */
   const navItems = React.useMemo(() => {
     if (!user) return [];
 
@@ -65,7 +80,7 @@ export function AppShell() {
       ];
     }
 
-    // Employee
+    // Default: Employee navigation
     return [
       { label: 'My Dashboard', path: '/employee/dashboard', icon: LayoutDashboard },
       { label: 'Check In / Out', path: '/employee/check-in', icon: Clock },
@@ -80,14 +95,16 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
-      {/* Mobile Top Bar */}
+      {/* ------------------------------------------------------------- */}
+      {/* Mobile Top Header (<= 768px) */}
+      {/* ------------------------------------------------------------- */}
       <header className="md:hidden flex items-center justify-between p-4 border-b border-border bg-surface-elevated sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
+            aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -101,7 +118,9 @@ export function AppShell() {
         </div>
       </header>
 
-      {/* Sidebar (Desktop + Mobile Drawer) */}
+      {/* ------------------------------------------------------------- */}
+      {/* Sidebar Navigation (Desktop Fixed + Mobile Drawer) */}
+      {/* ------------------------------------------------------------- */}
       <aside
         className={`fixed md:sticky top-0 left-0 z-50 h-screen w-64 border-r border-border bg-surface-elevated flex flex-col justify-between transition-transform duration-200 md:translate-x-0 ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
@@ -146,7 +165,7 @@ export function AppShell() {
             </div>
           </div>
 
-          {/* Navigation Links */}
+          {/* Navigation Links List */}
           <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-220px)]">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -171,7 +190,7 @@ export function AppShell() {
           </nav>
         </div>
 
-        {/* User Footer */}
+        {/* User Identity & Logout Footer */}
         <div className="p-4 border-t border-border bg-surface/30">
           <div className="flex items-center justify-between mb-3">
             <div className="truncate mr-2">
@@ -194,7 +213,7 @@ export function AppShell() {
         </div>
       </aside>
 
-      {/* Mobile Drawer Overlay */}
+      {/* Mobile Drawer Backdrop Overlay */}
       {mobileMenuOpen && (
         <div
           onClick={() => setMobileMenuOpen(false)}
@@ -202,7 +221,9 @@ export function AppShell() {
         />
       )}
 
-      {/* Main Content Area */}
+      {/* ------------------------------------------------------------- */}
+      {/* Main Routed Content Area */}
+      {/* ------------------------------------------------------------- */}
       <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto overflow-y-auto">
         <Outlet />
       </main>

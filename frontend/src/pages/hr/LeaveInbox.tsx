@@ -1,3 +1,13 @@
+/**
+ * @file LeaveInbox.tsx
+ * @description HR supervisor inbox for reviewing, approving, or rejecting staff leave applications.
+ *
+ * SPECIFICATION (PROJECT.md section 7 & section 8):
+ * - Evaluates employee leave requests (`PATCH /leave/{id}/decide`).
+ * - Comment is mandatory when rejecting an application.
+ * - Approved leaves decrement calendar year quota dynamically via `rules.leave_balance()`.
+ */
+
 import { useState, useEffect } from 'react';
 import { api } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -9,7 +19,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Textarea';
 import { useToast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils';
-import { Check, X, CalendarCheck2 } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 
 export function LeaveInbox() {
   const { success, error } = useToast();
@@ -19,6 +29,9 @@ export function LeaveInbox() {
   const [comment, setComment] = useState('');
   const [processing, setProcessing] = useState(false);
 
+  /**
+   * Fetches incoming employee leave applications.
+   */
   const loadLeaves = async () => {
     try {
       const res = await api.get<any[]>('/leave');
@@ -30,6 +43,9 @@ export function LeaveInbox() {
     loadLeaves();
   }, []);
 
+  /**
+   * Submits HR approval or rejection decision. Enforces mandatory comment on reject.
+   */
   const handleDecide = async () => {
     if (!selectedLeave) return;
     if (decision === 'rejected' && !comment.trim()) {

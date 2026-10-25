@@ -1,3 +1,13 @@
+/**
+ * @file CorrectionsInbox.tsx
+ * @description HR review inbox for employee attendance correction and timestamp appeal requests.
+ *
+ * SPECIFICATION (PROJECT.md section 7 & section 8):
+ * - Employees submit attendance corrections when hardware fails or adjustments are necessary.
+ * - HR approves or rejects appeals (`PATCH /attendance/corrections/{id}`).
+ * - On approval, updates attendance row with `source='correction'`, recomputes daily status, and notifies employee.
+ */
+
 import { useState, useEffect } from 'react';
 import { api } from '@/api/client';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -8,7 +18,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Textarea';
 import { useToast } from '@/components/ui/Toast';
 import { formatDate, formatTime } from '@/lib/utils';
-import { Check, X, Clock } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 
 export function CorrectionsInbox() {
   const { success, error } = useToast();
@@ -18,6 +28,9 @@ export function CorrectionsInbox() {
   const [comment, setComment] = useState('');
   const [processing, setProcessing] = useState(false);
 
+  /**
+   * Fetches pending attendance correction requests.
+   */
   const loadCorrections = async () => {
     try {
       const res = await api.get<any[]>('/attendance/corrections');
@@ -42,6 +55,9 @@ export function CorrectionsInbox() {
     loadCorrections();
   }, []);
 
+  /**
+   * Submits approval or rejection decision with explanatory comments.
+   */
   const handleDecide = async () => {
     if (!selectedReq) return;
     setProcessing(true);

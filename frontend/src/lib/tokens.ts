@@ -1,3 +1,16 @@
+/**
+ * @file tokens.ts
+ * @description Centralized design tokens, type definitions, and status color mappings.
+ * Strictly adheres to PROJECT.md section 7 & section 9 status definitions:
+ * - Attendance: 'present', 'late', 'half_day', 'absent', 'missing_checkout', 'on_leave'
+ * - Requests: 'pending', 'approved', 'rejected', 'cancelled'
+ * - Payroll: 'draft', 'finalized'
+ */
+
+/**
+ * Valid attendance status values matching the Postgres enum `att_status` in schema.sql.
+ * Note: 'absent' and 'missing_checkout' are computed by rules.daily_status(), never stored.
+ */
 export type AttendanceStatus =
   | 'present'
   | 'late'
@@ -6,10 +19,27 @@ export type AttendanceStatus =
   | 'missing_checkout'
   | 'on_leave';
 
+/**
+ * Valid request status values matching `req_status` in schema.sql.
+ * Used for leave requests and attendance correction appeals.
+ */
 export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+/**
+ * Payroll cycle state matching `payroll_status` in schema.sql.
+ * 'draft' allows HR recomputation; 'finalized' locks records permanently.
+ */
 export type PayrollStatus = 'draft' | 'finalized';
+
+/**
+ * Core application user roles matching `user_role` in schema.sql.
+ */
 export type UserRole = 'admin' | 'hr' | 'employee';
 
+/**
+ * Visual styling configuration for attendance statuses.
+ * Follows the ultra-minimal high-contrast design language.
+ */
 export const STATUS_CONFIG: Record<
   AttendanceStatus,
   { label: string; bg: string; text: string; border: string; dot: string }
@@ -58,6 +88,9 @@ export const STATUS_CONFIG: Record<
   },
 };
 
+/**
+ * Visual styling configuration for approval requests (Leaves, Corrections).
+ */
 export const REQ_STATUS_CONFIG: Record<
   RequestStatus,
   { label: string; bg: string; text: string; border: string }
