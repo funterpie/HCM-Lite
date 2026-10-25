@@ -112,10 +112,13 @@ async def get_payslip(session: AsyncSession, payslip_id: UUID) -> dict[str, Any]
         text(
             "SELECT p.*, r.month, "
             "jsonb_build_object('id', e.id, 'email', e.email, 'full_name', e.full_name, "
-            "'code', e.code, 'department_id', e.department_id) AS employee, "
+            "'code', e.code, 'department_id', e.department_id, 'department', d.name, "
+            "'designation', g.name) AS employee, "
             "s.company_name "
             "FROM payslips AS p JOIN payroll_runs AS r ON r.id = p.run_id "
             "JOIN employees AS e ON e.id = p.employee_id "
+            "LEFT JOIN departments AS d ON d.id = e.department_id "
+            "LEFT JOIN designations AS g ON g.id = e.designation_id "
             "CROSS JOIN settings AS s WHERE p.id = :payslip_id AND s.id = 1"
         ),
         {"payslip_id": payslip_id},

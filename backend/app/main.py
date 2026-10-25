@@ -12,7 +12,7 @@ from app.modules.comms.router import router as comms_router
 from app.modules.dashboards.router import router as dashboards_router
 from app.modules.employees.router import router as employees_router
 from app.modules.leave.router import router as leave_router
-from app.modules.payroll.router import router as payroll_router
+from app.modules.payroll.router import payslip_pdf_router, router as payroll_router
 from app.modules.settings.router import router as settings_router
 from app.modules.users.router import router as users_router
 from app.modules.auth.service import ensure_configured_admin
@@ -50,6 +50,7 @@ for module_router in (
     attendance_router,
     leave_router,
     payroll_router,
+    payslip_pdf_router,
     dashboards_router,
     ai_router,
     users_router,

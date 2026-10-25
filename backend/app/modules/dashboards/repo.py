@@ -19,7 +19,7 @@ async def get_headcount(
             "WHERE join_date <= :to_date "
             "AND (exit_date IS NULL OR exit_date >= :to_date) "
             "AND status IN ('active', 'probation') "
-            "AND (:department_id IS NULL OR department_id = CAST(:department_id AS uuid))"
+            "AND (CAST(:department_id AS uuid) IS NULL OR department_id = CAST(:department_id AS uuid))"
         ),
         {"to_date": to, "department_id": department_id},
     )
@@ -41,7 +41,7 @@ async def get_attendance_trend(
             "NULLIF(count(*) FILTER (WHERE status <> 'on_leave'), 0), 2) AS rate "
             "FROM v_daily_status "
             "WHERE day BETWEEN :from_date AND :to_date "
-            "AND (:department_id IS NULL OR department_id = CAST(:department_id AS uuid)) "
+            "AND (CAST(:department_id AS uuid) IS NULL OR department_id = CAST(:department_id AS uuid)) "
             "GROUP BY day ORDER BY day"
         ),
         {"from_date": from_, "to_date": to, "department_id": department_id},
@@ -63,7 +63,7 @@ async def get_absenteeism_by_dept(
             "FROM v_daily_status AS v "
             "JOIN departments AS d ON d.id = v.department_id "
             "WHERE v.day BETWEEN :from_date AND :to_date "
-            "AND (:department_id IS NULL OR v.department_id = CAST(:department_id AS uuid)) "
+            "AND (CAST(:department_id AS uuid) IS NULL OR v.department_id = CAST(:department_id AS uuid)) "
             "GROUP BY d.id, d.name ORDER BY d.name"
         ),
         {"from_date": from_, "to_date": to, "department_id": department_id},
@@ -92,7 +92,7 @@ async def get_leave_by_type(
             "AND lr.end_date >= :from_date AND s.id = 1 "
             "AND NOT (EXTRACT(ISODOW FROM generated.day)::integer = ANY(s.weekend_days)) "
             "AND NOT EXISTS (SELECT 1 FROM holidays AS h WHERE h.date = generated.day::date) "
-            "AND (:department_id IS NULL OR e.department_id = CAST(:department_id AS uuid)) "
+            "AND (CAST(:department_id AS uuid) IS NULL OR e.department_id = CAST(:department_id AS uuid)) "
             "GROUP BY lr.leave_type_id) "
             "SELECT lt.id AS leave_type_id, lt.name AS type, "
             "COALESCE(ald.days, 0)::integer AS days "
@@ -121,7 +121,7 @@ async def get_late_comers(
             "AND COALESCE(:to_date, (clock_timestamp() AT TIME ZONE "
             "(SELECT timezone FROM settings WHERE id = 1))::date) "
             "AND a.status = 'late' "
-            "AND (:department_id IS NULL OR e.department_id = CAST(:department_id AS uuid)) "
+            "AND (CAST(:department_id AS uuid) IS NULL OR e.department_id = CAST(:department_id AS uuid)) "
             "GROUP BY e.id, e.full_name ORDER BY count DESC, e.full_name LIMIT :limit"
         ),
         {
@@ -146,16 +146,16 @@ async def get_pending_approvals(
             "SELECT count(*) FROM leave_requests AS lr "
             "JOIN employees AS e ON e.id = lr.employee_id "
             "WHERE lr.status = 'pending' "
-            "AND (:from_date IS NULL OR lr.start_date >= :from_date) "
-            "AND (:to_date IS NULL OR lr.start_date <= :to_date) "
-            "AND (:department_id IS NULL OR e.department_id = CAST(:department_id AS uuid))"
+            "AND (CAST(:from_date AS date) IS NULL OR lr.start_date >= :from_date) "
+            "AND (CAST(:to_date AS date) IS NULL OR lr.start_date <= :to_date) "
+            "AND (CAST(:department_id AS uuid) IS NULL OR e.department_id = CAST(:department_id AS uuid))"
             ") + ("
             "SELECT count(*) FROM attendance_corrections AS ac "
             "JOIN employees AS e ON e.id = ac.employee_id "
             "WHERE ac.status = 'pending' "
-            "AND (:from_date IS NULL OR ac.date >= :from_date) "
-            "AND (:to_date IS NULL OR ac.date <= :to_date) "
-            "AND (:department_id IS NULL OR e.department_id = CAST(:department_id AS uuid))"
+            "AND (CAST(:from_date AS date) IS NULL OR ac.date >= :from_date) "
+            "AND (CAST(:to_date AS date) IS NULL OR ac.date <= :to_date) "
+            "AND (CAST(:department_id AS uuid) IS NULL OR e.department_id = CAST(:department_id AS uuid))"
             ") AS pending_approvals"
         ),
         {"from_date": from_, "to_date": to, "department_id": department_id},
@@ -174,19 +174,19 @@ async def get_present_today(
             "WHERE a.date = (clock_timestamp() AT TIME ZONE "
             "(SELECT timezone FROM settings WHERE id = 1))::date "
             "AND a.status IN ('present', 'late', 'half_day', 'missing_checkout') "
-            "AND (:department_id IS NULL OR e.department_id = CAST(:department_id AS uuid))"
+            "AND (CAST(:department_id AS uuid) IS NULL OR e.department_id = CAST(:department_id AS uuid))"
             ") AS present, (SELECT count(DISTINCT lr.employee_id)::integer "
             "FROM leave_requests AS lr JOIN employees AS e ON e.id = lr.employee_id "
             "WHERE lr.status = 'approved' AND lr.start_date <= (clock_timestamp() AT TIME ZONE "
             "(SELECT timezone FROM settings WHERE id = 1))::date "
             "AND lr.end_date >= (clock_timestamp() AT TIME ZONE "
             "(SELECT timezone FROM settings WHERE id = 1))::date "
-            "AND (:department_id IS NULL OR e.department_id = CAST(:department_id AS uuid))"
+            "AND (CAST(:department_id AS uuid) IS NULL OR e.department_id = CAST(:department_id AS uuid))"
             ") AS on_leave, (SELECT count(*)::integer FROM attendance AS a "
             "JOIN employees AS e ON e.id = a.employee_id "
             "WHERE a.date = (clock_timestamp() AT TIME ZONE "
             "(SELECT timezone FROM settings WHERE id = 1))::date AND a.status = 'late' "
-            "AND (:department_id IS NULL OR e.department_id = CAST(:department_id AS uuid))"
+            "AND (CAST(:department_id AS uuid) IS NULL OR e.department_id = CAST(:department_id AS uuid))"
             ") AS late_today"
         ),
         {"department_id": department_id},
@@ -221,7 +221,7 @@ async def get_payroll_cost(
             "FROM payslips AS p JOIN payroll_runs AS r ON r.id = p.run_id "
             "JOIN employees AS e ON e.id = p.employee_id "
             "WHERE r.month = :month "
-            "AND (:department_id IS NULL OR e.department_id = CAST(:department_id AS uuid))"
+            "AND (CAST(:department_id AS uuid) IS NULL OR e.department_id = CAST(:department_id AS uuid))"
         ),
         {"month": month, "department_id": department_id},
     )
@@ -243,6 +243,20 @@ async def get_avg_salary_by_dept_designation(
         )
     )
     return [dict(row) for row in result.mappings().all()]
+
+
+async def get_average_salary(
+    session: AsyncSession, department_id: str | None = None
+) -> dict[str, Any]:
+    result = await session.execute(
+        text(
+            "SELECT COALESCE(round(avg(basic_salary * 1.5), 2), 0) AS average_gross_salary "
+            "FROM employees WHERE status IN ('active', 'probation') "
+            "AND (CAST(:department_id AS uuid) IS NULL OR department_id = CAST(:department_id AS uuid))"
+        ),
+        {"department_id": department_id},
+    )
+    return dict(result.mappings().one())
 
 
 async def get_headcount_by_dept(session: AsyncSession) -> list[dict[str, Any]]:
@@ -354,6 +368,22 @@ async def get_last_payslip(session: AsyncSession, employee_id: str) -> dict[str,
             "JOIN payroll_runs AS r ON r.id = p.run_id "
             "WHERE p.employee_id = CAST(:employee_id AS uuid) "
             "ORDER BY r.month DESC LIMIT 1"
+        ),
+        {"employee_id": employee_id},
+    )
+    row = result.mappings().one_or_none()
+    return dict(row) if row else None
+
+
+async def get_today_attendance(
+    session: AsyncSession, employee_id: str
+) -> dict[str, Any] | None:
+    result = await session.execute(
+        text(
+            "SELECT a.date, a.check_in, a.check_out, a.status "
+            "FROM attendance AS a CROSS JOIN settings AS s "
+            "WHERE a.employee_id = CAST(:employee_id AS uuid) AND s.id = 1 "
+            "AND a.date = (clock_timestamp() AT TIME ZONE s.timezone)::date"
         ),
         {"employee_id": employee_id},
     )

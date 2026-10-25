@@ -2,7 +2,7 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import CurrentUser, current_user, require_role
@@ -15,8 +15,10 @@ from app.modules.payroll.schemas import (
     PayrollRunResponse,
     PayslipListResponse,
 )
+from app.modules.payroll.pdf import build_payslip_pdf_bytes
 
 router = APIRouter(prefix="/payroll", tags=["payroll"])
+payslip_pdf_router = APIRouter(prefix="/payslips", tags=["payroll"])
 
 
 @router.post("/runs", response_model=PayrollRunResponse, status_code=status.HTTP_201_CREATED)
@@ -69,3 +71,40 @@ async def get_payslips(
     else:
         raise AppError(403, "forbidden", "You do not have permission to access payslips.")
     return await service.list_payslips(session, month, employee_id)
+
+
+@payslip_pdf_router.get("/{payslip_id}/pdf")
+async def download_payslip_pdf(
+    payslip_id: UUID,
+    user: CurrentUser = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    payslip = await service.get_payslip(session, payslip_id)
+    if user.role == "employee" and user.employee_id != payslip["employee_id"]:
+        raise AppError(403, "forbidden", "You cannot access another employee's payslip.")
+    if user.role not in {"admin", "hr", "employee"}:
+        raise AppError(403, "forbidden", "You do not have permission to access payslips.")
+    employee = payslip["employee"]
+    pdf_bytes = build_payslip_pdf_bytes(
+        company_name=payslip["company_name"],
+        employee={
+            "full_name": employee["full_name"],
+            "employee_code": employee["code"],
+            "department": employee["department"] or "N/A",
+            "designation": employee["designation"] or "N/A",
+            "basic_salary": payslip["basic"],
+        },
+        payslip={
+            "basic_salary": payslip["basic"],
+            "gross": payslip["gross"],
+            "deduction": payslip["deduction"],
+            "tax": payslip["tax"],
+            "net": payslip["net"],
+        },
+        month=payslip["month"].strftime("%B %Y"),
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=payslip_{payslip_id}.pdf"},
+    )
