@@ -1,2 +1,3 @@
 T1-T4 done - backend skeleton, core auth/security, audit helpers, setup, /me, and change-password endpoints.
 T5 done - company settings and CRUD for departments, designations, leave types, and holidays; role checks, validation, audit logging, and default leave types.
+T6 implemented - employee registration, directory search/paging, 360 view, self-profile edits, salary updates, audit logs, and Supabase Auth account creation.
