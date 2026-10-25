@@ -42,6 +42,7 @@ interface MockDB {
     must_change_password: boolean;
     full_name: string;
   };
+  users: { id: string; email: string; role: 'admin' | 'hr' | 'employee'; is_active: boolean; must_change_password: boolean }[];
   departments: { id: string; name: string }[];
   designations: { id: string; name: string }[];
   leaveTypes: { id: string; name: string; yearly_quota: number | null; is_paid: boolean }[];
@@ -89,6 +90,11 @@ function getInitialDB(): MockDB {
       must_change_password: false,
       full_name: 'Farhan Ali (Admin)',
     },
+    users: [
+      { id: 'usr-admin-1', email: 'admin@nexustech.com', role: 'admin', is_active: true, must_change_password: false },
+      { id: 'usr-hr-1', email: 'hr@nexustech.com', role: 'hr', is_active: true, must_change_password: false },
+      { id: 'usr-dev-1', email: 'dev@nexustech.com', role: 'employee', is_active: true, must_change_password: false },
+    ],
     departments: [
       { id: 'dept-1', name: 'Engineering' },
       { id: 'dept-2', name: 'Human Resources' },
@@ -300,6 +306,11 @@ function getInitialDB(): MockDB {
 }
 
 let db = getInitialDB();
+db.users ??= [
+  { id: 'usr-admin-1', email: 'admin@nexustech.com', role: 'admin', is_active: true, must_change_password: false },
+  { id: 'usr-hr-1', email: 'hr@nexustech.com', role: 'hr', is_active: true, must_change_password: false },
+  { id: 'usr-dev-1', email: 'dev@nexustech.com', role: 'employee', is_active: true, must_change_password: false },
+];
 
 /**
  * Persists the current in-memory state to browser LocalStorage.
@@ -328,6 +339,52 @@ export async function handleMockRequest<T>(
   await new Promise((res) => setTimeout(res, 120));
 
   const parsedBody = body ? (typeof body === 'string' ? JSON.parse(body) : body) : {};
+
+  if (endpoint === '/users' && method === 'GET') {
+    if (db.currentUser.role !== 'admin') throw new ApiError(403, 'forbidden', 'Admin access is required.');
+    return db.users as unknown as T;
+  }
+
+  if (endpoint === '/users/hr' && method === 'POST') {
+    if (db.currentUser.role !== 'admin') throw new ApiError(403, 'forbidden', 'Admin access is required.');
+    const email = String(parsedBody.email || '').trim().toLowerCase();
+    if (db.users.some((user) => user.email.toLowerCase() === email)) {
+      throw new ApiError(409, 'duplicate_email', 'An account with this email already exists.');
+    }
+    if (!email || String(parsedBody.temp_password || '').length < 8) {
+      throw new ApiError(400, 'validation_error', 'Enter a valid email and a password with at least 8 characters.');
+    }
+    const user = { id: `usr-${Date.now()}`, email, role: 'hr' as const, is_active: true, must_change_password: true };
+    db.users.push(user);
+    saveDB();
+    return user as unknown as T;
+  }
+
+  const activeUserRoute = endpoint.match(/^\/users\/([^/]+)\/active$/);
+  if (activeUserRoute && method === 'PATCH') {
+    if (db.currentUser.role !== 'admin') throw new ApiError(403, 'forbidden', 'Admin access is required.');
+    const managedUser = db.users.find((user) => user.id === activeUserRoute[1]);
+    if (!managedUser) throw new ApiError(404, 'user_not_found', 'The user was not found.');
+    if (managedUser.id === db.currentUser.id && parsedBody.is_active === false) {
+      throw new ApiError(409, 'cannot_disable_self', 'You cannot disable your own account.');
+    }
+    managedUser.is_active = Boolean(parsedBody.is_active);
+    saveDB();
+    return { id: managedUser.id, is_active: managedUser.is_active } as unknown as T;
+  }
+
+  const resetUserRoute = endpoint.match(/^\/users\/([^/]+)\/reset-password$/);
+  if (resetUserRoute && method === 'POST') {
+    if (db.currentUser.role !== 'admin') throw new ApiError(403, 'forbidden', 'Admin access is required.');
+    const managedUser = db.users.find((user) => user.id === resetUserRoute[1]);
+    if (!managedUser) throw new ApiError(404, 'user_not_found', 'The user was not found.');
+    if (String(parsedBody.temp_password || '').length < 8) {
+      throw new ApiError(400, 'validation_error', 'Temporary password must contain at least 8 characters.');
+    }
+    managedUser.must_change_password = true;
+    saveDB();
+    return { id: managedUser.id, must_change_password: true } as unknown as T;
+  }
 
   // -------------------------------------------------------------
   // M1: Setup & Bootstrap Endpoints

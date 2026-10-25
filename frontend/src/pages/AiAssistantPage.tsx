@@ -85,6 +85,10 @@ export function AiAssistantPage() {
     try {
       const res = await api.post<{ answer: string; tool_used?: string }>('/ai/chat', {
         message: q,
+        history: messages.filter((message) => message.id !== 'welcome').slice(-10).map((message) => ({
+          role: message.sender,
+          content: message.text,
+        })),
       });
 
       const botMsg: ChatMessage = {
@@ -98,6 +102,8 @@ export function AiAssistantPage() {
       let errText = "I encountered an error querying live data. Please try again in a moment.";
       if (err instanceof ApiError && err.status === 429) {
         errText = "Rate limit reached (20 requests/hour limit). Please wait a short while.";
+      } else if (err instanceof ApiError && err.status === 503) {
+        errText = err.message;
       }
       setMessages((prev) => [
         ...prev,

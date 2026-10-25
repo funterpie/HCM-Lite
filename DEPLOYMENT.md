@@ -3,7 +3,7 @@
 ## Supabase
 
 1. Run `supabase/schema.sql` once on a fresh Supabase project.
-2. Configure the backend environment from `backend/.env.example` with the Supabase URL, service-role key, JWT secret, and transaction-pooler database URL.
+2. Configure the backend environment from `backend/.env.example` with the Supabase URL, service-role key, JWT secret, and transaction-pooler database URL. Set `AI_API_KEY` (and optionally `AI_MODEL`) to enable Groq-powered assistant, summary, and Smart Leave features.
 3. Start the backend and complete the first-run setup at `http://localhost:5173/setup`. This creates the company settings and first admin through Supabase Auth.
 4. To add non-login sample employees and dashboard activity, run `supabase/demo_seed.sql` against that configured database. It is idempotent and refuses to run before setup; it does not replace existing rows.
 

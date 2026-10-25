@@ -89,7 +89,7 @@ export function MyLeave() {
         success('Form populated from natural language prompt. Please verify and confirm below.');
       }
     } catch (err: any) {
-      error('Could not interpret prompt automatically. Please complete the form manually.');
+      error(err instanceof ApiError ? err.message : 'Could not interpret prompt automatically. Please complete the form manually.');
     } finally {
       setSmartLoading(false);
     }

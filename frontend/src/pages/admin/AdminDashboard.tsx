@@ -16,6 +16,7 @@ import { StatCard } from '@/components/ui/StatCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { AiBadge } from '@/components/ui/AiBadge';
+import { useToast } from '@/components/ui/Toast';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatCurrency } from '@/lib/utils';
 import { Users, DollarSign, Clock, ShieldAlert, Sparkles, TrendingUp } from 'lucide-react';
@@ -32,6 +33,7 @@ import {
 } from 'recharts';
 
 export function AdminDashboard() {
+  const { error } = useToast();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [aiSummary, setAiSummary] = useState<string[] | null>(null);
@@ -43,6 +45,7 @@ export function AdminDashboard() {
         const res = await api.get('/dashboard/admin');
         setData(res);
       } catch (e) {
+        error(e instanceof Error ? e.message : 'Could not load the executive dashboard.');
       } finally {
         setLoading(false);
       }
@@ -61,6 +64,7 @@ export function AdminDashboard() {
       });
       setAiSummary(res.bullets);
     } catch (e) {
+      error(e instanceof Error ? e.message : 'Could not generate an AI summary.');
     } finally {
       setSummarizing(false);
     }
