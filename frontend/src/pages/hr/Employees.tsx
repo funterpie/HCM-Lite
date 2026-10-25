@@ -29,11 +29,6 @@ import {
   Download,
   Eye,
   DollarSign,
-  Briefcase,
-  Calendar,
-  Phone,
-  Mail,
-  MapPin,
 } from 'lucide-react';
 
 export function Employees() {
@@ -67,6 +62,7 @@ export function Employees() {
     designation_id: '',
     join_date: new Date().toISOString().split('T')[0],
     basic_salary: '',
+    temp_password: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -78,12 +74,12 @@ export function Employees() {
     try {
       const [empRes, deptRes, desigRes] = await Promise.all([
         api.get<any>('/employees', { q: searchQuery, department_id: deptFilter }),
-        api.get<any[]>('/departments'),
-        api.get<any[]>('/designations'),
+        api.get<any>('/departments'),
+        api.get<any>('/designations'),
       ]);
       setEmployees(empRes?.data || []);
-      if (Array.isArray(deptRes)) setDepartments(deptRes);
-      if (Array.isArray(desigRes)) setDesignations(desigRes);
+      setDepartments(Array.isArray(deptRes) ? deptRes : deptRes?.data || []);
+      setDesignations(Array.isArray(desigRes) ? desigRes : desigRes?.data || []);
     } catch (e) {}
   };
 
@@ -114,6 +110,7 @@ export function Employees() {
         designation_id: '',
         join_date: new Date().toISOString().split('T')[0],
         basic_salary: '',
+        temp_password: '',
       });
       loadData();
     } catch (err: any) {
@@ -167,7 +164,7 @@ export function Employees() {
         .concat(
           employees.map(
             (e) =>
-              `${e.code},${e.full_name},${e.email},${e.department_name},${e.designation_name},${e.status},${e.basic_salary}`
+              `${e.code},${e.full_name},${e.email},${e.department || e.department_name},${e.designation || e.designation_name},${e.status},${e.basic_salary}`
           )
         )
         .join('\n');
@@ -258,8 +255,8 @@ export function Employees() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="text-xs font-medium text-foreground">{emp.department_name}</p>
-                        <p className="text-[11px] text-muted-foreground">{emp.designation_name}</p>
+                        <p className="text-xs font-medium text-foreground">{emp.department || emp.department_name}</p>
+                        <p className="text-[11px] text-muted-foreground">{emp.designation || emp.designation_name}</p>
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
@@ -403,6 +400,17 @@ export function Employees() {
             placeholder="Street address, city"
           />
 
+          <Input
+            label="Temporary Password"
+            type="password"
+            required
+            minLength={8}
+            value={formData.temp_password}
+            onChange={(e) => setFormData({ ...formData, temp_password: e.target.value })}
+            error={formErrors.temp_password}
+            helperText="The employee will be prompted to change this after signing in."
+          />
+
           <div className="flex justify-end gap-2 pt-4 border-t border-border">
             <Button type="button" variant="outline" onClick={() => setRegisterModal(false)}>
               Cancel
@@ -428,11 +436,11 @@ export function Employees() {
             <div className="grid grid-cols-2 gap-3 p-4 bg-surface rounded-lg border border-border">
               <div className="space-y-1">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground">Department</span>
-                <p className="font-semibold">{view360Emp.profile?.department_name || 'N/A'}</p>
+                <p className="font-semibold">{view360Emp.profile?.department || view360Emp.profile?.department_name || 'N/A'}</p>
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground">Designation</span>
-                <p className="font-semibold">{view360Emp.profile?.designation_name || 'N/A'}</p>
+                <p className="font-semibold">{view360Emp.profile?.designation || view360Emp.profile?.designation_name || 'N/A'}</p>
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground">Work Email</span>
@@ -452,16 +460,32 @@ export function Employees() {
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded">
                   <span className="text-[10px] text-emerald-800 font-semibold uppercase">Present Days</span>
-                  <p className="text-base font-bold text-emerald-700">18</p>
+                  <p className="text-base font-bold text-emerald-700">{view360Emp.attendance_summary?.counts?.present ?? view360Emp.attendance_summary?.present ?? 0}</p>
                 </div>
                 <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded">
                   <span className="text-[10px] text-amber-800 font-semibold uppercase">Late Arrivals</span>
-                  <p className="text-base font-bold text-amber-700">2</p>
+                  <p className="text-base font-bold text-amber-700">{view360Emp.attendance_summary?.counts?.late ?? view360Emp.attendance_summary?.late ?? 0}</p>
                 </div>
                 <div className="p-3 bg-surface border border-border rounded">
                   <span className="text-[10px] text-muted-foreground font-semibold uppercase">Attendance Rate</span>
-                  <p className="text-base font-bold text-foreground">94.5%</p>
+                  <p className="text-base font-bold text-foreground">{view360Emp.attendance_summary?.attendance_rate ?? 0}%</p>
                 </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Leave Balances
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {(view360Emp.leave_balances || []).map((balance: any) => (
+                  <div key={balance.leave_type_id} className="p-3 bg-surface border border-border rounded">
+                    <span className="text-[10px] font-semibold uppercase text-muted-foreground">{balance.name}</span>
+                    <p className="text-sm font-bold text-foreground">
+                      {balance.remaining == null ? 'Unlimited' : `${balance.remaining} remaining`}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
 

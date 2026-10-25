@@ -25,6 +25,7 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const isMock = import.meta.env.VITE_USE_MOCKS === 'true';
 
   // Automatically route according to account setup & password change flags
   React.useEffect(() => {
@@ -110,40 +111,42 @@ export function Login() {
             </form>
 
             {/* Quick 1-Click Role Login Presets for Hackathon Judges */}
-            <div className="mt-6 pt-6 border-t border-border space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center">
-                Demo 1-Click Role Login
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickLogin('admin')}
-                  className="text-xs"
-                >
-                  Admin
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickLogin('hr')}
-                  className="text-xs"
-                >
-                  HR
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickLogin('employee')}
-                  className="text-xs"
-                >
-                  Employee
-                </Button>
+            {isMock && (
+              <div className="mt-6 pt-6 border-t border-border space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center">
+                  Demo 1-Click Role Login
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickLogin('admin')}
+                    className="text-xs"
+                  >
+                    Admin
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickLogin('hr')}
+                    className="text-xs"
+                  >
+                    HR
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickLogin('employee')}
+                    className="text-xs"
+                  >
+                    Employee
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 

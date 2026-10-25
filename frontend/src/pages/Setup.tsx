@@ -19,7 +19,7 @@ import { Building2, ArrowRight } from 'lucide-react';
 
 export function Setup() {
   const navigate = useNavigate();
-  const { refreshUser } = useAuth();
+  const { login, refreshUser } = useAuth();
 
   const [companyName, setCompanyName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
@@ -40,7 +40,11 @@ export function Setup() {
         admin_email: adminEmail,
         admin_password: adminPassword,
       });
-      await refreshUser();
+      try {
+        await login(adminEmail, adminPassword);
+      } catch {
+        await refreshUser();
+      }
       navigate('/admin/dashboard');
     } catch (err: any) {
       setErrorMsg(err.message || 'Setup initialization failed');

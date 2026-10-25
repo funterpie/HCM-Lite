@@ -39,15 +39,15 @@ export function Organization() {
   const loadAll = async () => {
     try {
       const [d, ds, lt, h] = await Promise.all([
-        api.get<any[]>('/departments'),
-        api.get<any[]>('/designations'),
-        api.get<any[]>('/leave-types'),
-        api.get<any[]>('/holidays'),
+        api.get<any>('/departments'),
+        api.get<any>('/designations'),
+        api.get<any>('/leave-types'),
+        api.get<any>('/holidays'),
       ]);
-      if (Array.isArray(d)) setDepts(d);
-      if (Array.isArray(ds)) setDesigs(ds);
-      if (Array.isArray(lt)) setLeaveTypes(lt);
-      if (Array.isArray(h)) setHolidays(h);
+      setDepts(Array.isArray(d) ? d : d?.data || []);
+      setDesigs(Array.isArray(ds) ? ds : ds?.data || []);
+      setLeaveTypes(Array.isArray(lt) ? lt : lt?.data || []);
+      setHolidays(Array.isArray(h) ? h : h?.data || []);
     } catch (e) {}
   };
 

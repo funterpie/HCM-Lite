@@ -37,7 +37,7 @@ export function CheckIn() {
    */
   const fetchTodayStatus = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toLocaleDateString('en-CA');
       const res = await api.get<any>('/attendance', { from: today, to: today });
       if (Array.isArray(res) && res.length > 0) {
         setTodayRecord(res[0]);
