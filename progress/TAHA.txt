@@ -1,5 +1,8 @@
 T1-T4 done - backend skeleton, core auth/security, audit helpers, setup, /me, and change-password endpoints.
 T5 done - company settings and CRUD for departments, designations, leave types, and holidays; role checks, validation, audit logging, and default leave types.
 T6 implemented - employee registration, directory search/paging, 360 view, self-profile edits, salary updates, audit logs, and Supabase Auth account creation.
-D2 implementation - added v_daily_status and HR dashboard SQL aggregations; database parity and live query validation remain pending.
+D2 done - v_daily_status and HR dashboard SQL added; five-case parity check passed, live metrics remain unverified because the configured database is empty.
 T7 done - payroll run create/recalculate, listing, admin finalization, scoped payslips, notifications, audit logging, and PDF lookup helper implemented; server routes verified.
+D3 done - admin and employee dashboard SQL aggregates implemented.
+T8 done - announcements, per-user notifications, and filtered/paginated admin audit endpoints implemented.
+D4 partial - v_daily_status matched five parity cases in a rollback-only Supabase check; full fresh-database demo not run to avoid destructive reset.

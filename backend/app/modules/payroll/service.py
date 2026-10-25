@@ -15,6 +15,7 @@ from app.rules.payroll import compute_payslip
 async def create_or_recalculate_run(
     session: AsyncSession, actor_id: UUID, month: date
 ) -> dict[str, Any]:
+    existing_run = await repo.get_run_by_month(session, month, lock=True)
     run = await repo.create_run(session, month, actor_id)
     if run is None:
         await session.rollback()
@@ -48,7 +49,7 @@ async def create_or_recalculate_run(
     await audit_log(
         session,
         actor_id,
-        "recalculate" if updated and updated["created_by"] != actor_id else "create",
+        "recalculate" if existing_run else "create",
         "payroll_run",
         run["id"],
         run,
