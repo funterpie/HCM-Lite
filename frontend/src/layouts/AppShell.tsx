@@ -11,9 +11,10 @@
  * - Features a Quick Role Preview switcher allowing judges to toggle roles with zero friction.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
+import { api } from '@/api/client';
 import { NotificationsBell } from '@/components/NotificationsBell';
 import { Button } from '@/components/ui/Button';
 import {
@@ -36,9 +37,20 @@ import {
 } from 'lucide-react';
 
 export function AppShell() {
-  const { user, logout, switchMockRole } = useAuth();
+  const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [companyName, setCompanyName] = useState(
+    import.meta.env.VITE_COMPANY_NAME?.trim() || 'HCM Lite'
+  );
   const navigate = useNavigate();
+
+  useEffect(() => {
+    api.get<{ company_name?: string }>('/settings')
+      .then((settings) => {
+        if (settings.company_name?.trim()) setCompanyName(settings.company_name.trim());
+      })
+      .catch(() => {});
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -108,7 +120,7 @@ export function AppShell() {
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
-          <span className="font-bold text-sm tracking-tight text-foreground">HCM Lite</span>
+          <span className="font-bold text-sm tracking-tight text-foreground">{companyName}</span>
         </div>
         <div className="flex items-center gap-2">
           <NotificationsBell />
@@ -132,37 +144,15 @@ export function AppShell() {
             <div>
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded bg-accent text-accent-foreground flex items-center justify-center font-bold text-xs">
-                  H
+                  {companyName.charAt(0).toUpperCase()}
                 </div>
-                <h1 className="font-bold text-base tracking-tight text-foreground">HCM Lite</h1>
+                <h1 className="font-bold text-base tracking-tight text-foreground">{companyName}</h1>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">Enterprise Core HR</p>
             </div>
             <span className="hidden md:inline-block text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
               {user?.role}
             </span>
-          </div>
-
-          {/* Quick Role Switcher for Hackathon Judges */}
-          <div className="px-4 py-2 bg-surface/50 border-b border-border text-[11px]">
-            <span className="text-muted-foreground block mb-1 font-semibold uppercase tracking-wider text-[9px]">
-              Demo Role Preview
-            </span>
-            <div className="grid grid-cols-3 gap-1">
-              {(['admin', 'hr', 'employee'] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => switchMockRole(r)}
-                  className={`px-1.5 py-1 rounded text-center font-medium capitalize text-[10px] transition-colors ${
-                    user?.role === r
-                      ? 'bg-accent text-accent-foreground shadow-sm font-semibold'
-                      : 'bg-background hover:bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Navigation Links List */}

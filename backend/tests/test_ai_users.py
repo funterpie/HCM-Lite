@@ -23,7 +23,7 @@ def test_user_provisioning_rejects_weak_password():
 
 
 def test_ai_reports_missing_server_key_without_calling_provider(monkeypatch):
-    monkeypatch.setattr(ai_service, "get_settings", lambda: SimpleNamespace(ai_api_key="", ai_model=""))
+    monkeypatch.setattr(ai_service, "get_settings", lambda: SimpleNamespace(ai_api_key=""))
     user = SimpleNamespace(id="123", role="admin")
 
     with pytest.raises(AppError) as exc_info:

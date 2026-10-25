@@ -73,7 +73,10 @@ export function Employees() {
   const loadData = async () => {
     try {
       const [empRes, deptRes, desigRes] = await Promise.all([
-        api.get<any>('/employees', { q: searchQuery, department_id: deptFilter }),
+        api.get<any>('/employees', {
+          q: searchQuery || undefined,
+          department_id: deptFilter || undefined,
+        }),
         api.get<any>('/departments'),
         api.get<any>('/designations'),
       ]);

@@ -26,6 +26,7 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const isMock = import.meta.env.VITE_USE_MOCKS === 'true';
+  const companyName = import.meta.env.VITE_COMPANY_NAME?.trim() || 'HCM Lite';
 
   // Automatically route according to account setup & password change flags
   React.useEffect(() => {
@@ -70,9 +71,9 @@ export function Login() {
         {/* Brand Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-accent-foreground font-black text-xl mb-1">
-            H
+            {companyName.charAt(0).toUpperCase()}
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">HCM Lite</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{companyName}</h1>
           <p className="text-xs text-muted-foreground">Minimal, distraction-free Human Capital Management</p>
         </div>
 

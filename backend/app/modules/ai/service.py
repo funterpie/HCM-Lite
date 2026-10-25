@@ -27,13 +27,13 @@ async def _complete(
     json_mode: bool = False,
 ) -> str:
     settings = get_settings()
-    if not settings.ai_api_key or not settings.ai_model:
-        raise AppError(503, "ai_not_configured", "AI is not configured. Set AI_API_KEY and AI_MODEL on the backend to enable this feature.")
+    if not settings.ai_api_key:
+        raise AppError(503, "ai_not_configured", "AI is not configured. Set AI_API_KEY on the backend to enable this feature.")
     if await count_user_ai_logs_last_hour(session, user.id) >= 20:
         raise AppError(429, "rate_limited", "The AI request limit has been reached. Try again later.")
     messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
     payload: dict[str, Any] = {
-        "model": settings.ai_model or "llama-3.3-70b-versatile",
+        "model": settings.ai_model or "openai/gpt-oss-120b",
         "messages": messages,
         "temperature": 0.1,
     }
