@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /**
    * Checks organization bootstrap status and fetches current logged-in user profile.
    */
-  const fetchStatusAndUser = async () => {
+  const fetchStatusAndUser = async (throwOnError = false) => {
     try {
       setLoading(true);
       // 1. Verify if this is a fresh install requiring initial master setup
@@ -82,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(userData);
     } catch (err) {
       setUser(null);
+      if (throwOnError) throw err;
     } finally {
       setLoading(false);
     }
@@ -100,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
     }
-    await fetchStatusAndUser();
+    await fetchStatusAndUser(true);
   };
 
   /**

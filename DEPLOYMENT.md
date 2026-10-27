@@ -1,5 +1,7 @@
 # Local Demo and Deployment
 
+For the current endpoint list, authentication rules, request examples, and feature-development workflow, see [API_GUIDE.md](API_GUIDE.md).
+
 ## Supabase
 
 1. Run `supabase/schema.sql` once on a fresh Supabase project.
@@ -27,7 +29,7 @@ npm ci
 npm run dev
 ```
 
-Set `VITE_API_URL=http://localhost:8000/api`, `VITE_COMPANY_NAME`, `VITE_SUPABASE_URL`, and the public `VITE_SUPABASE_ANON_KEY` in `frontend/.env.local`. Keep `VITE_USE_MOCKS=false` for the real API. Never put the service-role key in frontend variables.
+Set `VITE_API_URL=http://localhost:8000/api`, `VITE_COMPANY_NAME`, `VITE_SUPABASE_URL`, and the public `VITE_SUPABASE_ANON_KEY` in `frontend/.env`. Vite loads this file automatically for local development. Keep `VITE_USE_MOCKS=false` for the real API. Never put the service-role key in frontend variables.
 
 ## Deployment checks
 
